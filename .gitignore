@@ -1,0 +1,5 @@
+**/target
+**/.idea
+**/obj
+**/bin
+*.sln.DotSettings.*
