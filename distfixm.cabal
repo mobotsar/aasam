@@ -1,6 +1,7 @@
-cabal-version:      2.4
-name:               distfixm
-version:            0.1.0.0
+cabal-version: 2.4
+
+name: distfixm
+version: 0.1.0.0
 
 -- A short (one-line) description of the package.
 synopsis: Convert distfix (mixifx) precedence grammars to unambiguous context-free grammars.
@@ -11,33 +12,35 @@ synopsis: Convert distfix (mixifx) precedence grammars to unambiguous context-fr
 -- A URL where users can report bugs.
 bug-reports: https://gitlab.com/mobotsar/distfixm
 
-author:             Alexander Lucas
-maintainer:         mobotsar@pm.me
+author: Alexander Lucas
+maintainer: mobotsar@protonmail.com
 
 extra-source-files: README.md
 
 -- The license under which the package is released.
-license:            Apache-2.0
+license: Apache-2.0
 
 -- The file containing the license text.
-license-file:       LICENSE
+license-file: LICENSE
 
 library
-    exposed-modules:  Distfixm
+    exposed-modules: Distfixm
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules: Grammars
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
 
-    build-depends:    base ^>=4.15.1.0
-    hs-source-dirs:   lib
+    build-depends: base ^>=4.15.1.0,
+                   containers
+
+    hs-source-dirs: lib
     default-language: Haskell2010
 
 test-suite distfixm-test
     default-language: Haskell2010
-    type:             exitcode-stdio-1.0
-    hs-source-dirs:   test
-    main-is:          DistfixmTest.hs
-    build-depends:    base ^>=4.15.1.0
+    type: exitcode-stdio-1.0
+    hs-source-dirs: test
+    main-is: DistfixmTest.hs
+    build-depends: base ^>=4.15.1.0
