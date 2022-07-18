@@ -1,10 +1,7 @@
-module Distfixm (someFunc) where
+module Distfixm (m) where
 
 import Grammars
 import Data.Set
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
-
-grm :: Distfix
-grm = singleton (In (Infix (Op "")))
+m :: ContextFree -> Precedence
+m (s, prods) = empty
