@@ -24,10 +24,11 @@ license: Apache-2.0
 license-file: LICENSE
 
 library
-    exposed-modules: Aasam
+    exposed-modules: Aasam,
+                     Grammars
 
     -- Modules included in this library but not exported.
-    other-modules: Grammars
+    -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
