@@ -2,12 +2,12 @@ module Main (main) where
 
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
-import Test.HUnit (Test(..), Assertable(assert))
+import Test.HUnit (Test(..), Assertable(assert), Assertion)
 import Test.Framework.Providers.API (Test(Test))
 
 
-testMap :: [(String, Test.HUnit.Test)] -> [Test.HUnit.Test]
-testMap = map (uncurry TestLabel)
+testMap :: [(String, Bool)] -> [Test.HUnit.Test]
+testMap = map (\(x, y) -> TestLabel x ((TestCase . assert) y))
 
 
 tests :: [Test.Framework.Providers.API.Test]
@@ -17,6 +17,6 @@ main :: IO ()
 main = defaultMain tests
 
 
-labeledTests :: [(String, Test.HUnit.Test)]
-labeledTests = [("First one", TestCase $ assert (7 == 5)),
-                ("Second one", TestCase $ assert (7 == 7))]
+labeledTests :: [(String, Bool)]
+labeledTests = [("First one", 7 == 5),
+                ("Second one", 7 == 7)]
