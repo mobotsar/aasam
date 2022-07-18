@@ -44,4 +44,7 @@ test-suite distfixm-test
     type: exitcode-stdio-1.0
     hs-source-dirs: test
     main-is: AasamTest.hs
-    build-depends: base ^>=4.15.1.0
+    build-depends: base ^>=4.15.1.0,
+                   HUnit,
+                   test-framework,
+                   test-framework-hunit

@@ -1,6 +1,16 @@
 module Aasam (m) where
 
 import Grammars
+    ( Ae,
+      Closed(..),
+      ContextFree,
+      Infixl(..),
+      Infixr(..),
+      NonTerminal(NonTerminal),
+      Postfix(..),
+      Precedence,
+      PrecedenceProduction(..),
+      Prefix(..) )
 
 import Data.Set
 import qualified Data.Set as Set
