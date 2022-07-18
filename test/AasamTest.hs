@@ -2,21 +2,22 @@ module Main (main) where
 
 import Test.Framework (defaultMain)
 import Test.Framework.Providers.HUnit (hUnitTestToTests)
-import Test.HUnit (Test(..), Assertable(assert), Assertion)
+import Test.HUnit (Test(..), Assertable(assert), Assertion, assertEqual)
 import Test.Framework.Providers.API (Test(Test))
 
 
-testMap :: [(String, Bool)] -> [Test.HUnit.Test]
-testMap = map (\(x, y) -> TestLabel x ((TestCase . assert) y))
+testMap :: Eq a => Show a => [(String, a, a)] -> [Test.HUnit.Test]
+testMap = map (\(x, y, z) -> TestLabel x (TestCase (assertEqual "" y z)))
 
 
 tests :: [Test.Framework.Providers.API.Test]
-tests = hUnitTestToTests $ TestList $ testMap labeledTests
+tests = hUnitTestToTests $ TestList labeledTests
 
 main :: IO ()
 main = defaultMain tests
 
 
-labeledTests :: [(String, Bool)]
-labeledTests = [("First one", 7 == 5),
-                ("Second one", 7 == 7)]
+labeledTests :: [Test.HUnit.Test]
+labeledTests =
+    testMap [("First one", 6, 6), ("Second one", 7, 8)] ++
+    testMap [("Third", [], [34])]
