@@ -7,7 +7,7 @@ import Test.Framework.Providers.API (Test(Test))
 
 
 testMap :: Eq a => Show a => [(String, a, a)] -> [Test.HUnit.Test]
-testMap = map (\(x, y, z) -> TestLabel x (TestCase (assertEqual "" y z)))
+testMap = map (\(label, x, y) -> TestLabel label (TestCase (assertEqual "" x y)))
 
 
 tests :: [Test.Framework.Providers.API.Test]

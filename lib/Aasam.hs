@@ -21,6 +21,7 @@ data FlatPP =
     | FlatInfixl  Int [Ae]
     | FlatInfixr  Int [Ae]
     | FlatClosed      [Ae]
+    deriving (Eq, Ord, Show)
 type FlatPrecedence = Set.Set FlatPP
 
 renderFlat :: PrecedenceProduction -> FlatPP

@@ -9,10 +9,10 @@ type CfgString      = [Either Terminal NonTerminal]
 type CfgProduction  = (NonTerminal, CfgString)
 type ContextFree    = (NonTerminal, Set CfgProduction)
 
-newtype Infixl  = Infixl Closed deriving (Eq, Ord)
-newtype Infixr  = Infixr Closed deriving (Eq, Ord)
-newtype Prefix  = Prefix Closed deriving (Eq, Ord)
-newtype Postfix = Postfix Closed deriving (Eq, Ord)
+newtype Infixl  = Infixl Closed deriving (Eq, Ord, Show)
+newtype Infixr  = Infixr Closed deriving (Eq, Ord, Show)
+newtype Prefix  = Prefix Closed deriving (Eq, Ord, Show)
+newtype Postfix = Postfix Closed deriving (Eq, Ord, Show)
 data Closed =
       Op Ae
     | SubInl Ae Infixl Ae
@@ -20,7 +20,7 @@ data Closed =
     | SubPre Ae Prefix Ae
     | SubPost Ae Postfix Ae
     | SubClosed Ae Closed Ae
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 type Ae = String
 
 data PrecedenceProduction =
@@ -29,6 +29,6 @@ data PrecedenceProduction =
     | Pre Int Prefix
     | Post Int Postfix
     | Closed Closed
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Show)
 
 type Precedence = Set PrecedenceProduction
