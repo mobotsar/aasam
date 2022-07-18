@@ -1,6 +1,6 @@
 cabal-version: 2.4
 
-name: distfixm
+name: aasam
 version: 0.1.0.0
 
 -- A short (one-line) description of the package.
@@ -24,7 +24,7 @@ license: Apache-2.0
 license-file: LICENSE
 
 library
-    exposed-modules: Distfixm
+    exposed-modules: Aasam
 
     -- Modules included in this library but not exported.
     other-modules: Grammars
@@ -42,5 +42,5 @@ test-suite distfixm-test
     default-language: Haskell2010
     type: exitcode-stdio-1.0
     hs-source-dirs: test
-    main-is: DistfixmTest.hs
+    main-is: AasamTest.hs
     build-depends: base ^>=4.15.1.0
