@@ -92,21 +92,6 @@ m prec = (NonTerminal "", Set.empty) where
 
 
 
-
-                    -- rule q = Set.union a b
-                        -- a = Set.singleton (nt prec p q, Right (nt prec 0 q) : inner ++ [Right (nt (prec - 1) p 0)]) where
-                        --     inner = []
-                        -- b = Set.singleton (nt prec p q, []) 
-
-
-        -- move :: Set CfgProduction
-        -- move = foldl (\a e -> Set.union a (transform_class e)) Set.empty distfixes where
-        --     transform_class :: [(Int, Int, PrecedenceProduction)] -> Set CfgProduction
-        --     transform x = 
-
-
-
-
 doGeneric :: PrecedenceProduction -> (Int -> NonEmpty String -> a) -> a
 doGeneric (Prefix prec words) f = f prec words
 doGeneric (Postfix prec words) f = f prec words
