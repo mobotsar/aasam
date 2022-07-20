@@ -9,26 +9,33 @@ type CfgString      = [Either Terminal NonTerminal]
 type CfgProduction  = (NonTerminal, CfgString)
 type ContextFree    = (NonTerminal, Set CfgProduction)
 
-newtype Infixl  = Infixl Closed deriving (Eq, Ord, Show)
-newtype Infixr  = Infixr Closed deriving (Eq, Ord, Show)
+newtype Infix  = Infix Closed deriving (Eq, Ord, Show)
 newtype Prefix  = Prefix Closed deriving (Eq, Ord, Show)
 newtype Postfix = Postfix Closed deriving (Eq, Ord, Show)
 data Closed =
       Op Ae
-    | SubInl Ae Infixl Ae
-    | SubInr Ae Infixr Ae
-    | SubPre Ae Prefix Ae
-    | SubPost Ae Postfix Ae
-    | SubClosed Ae Closed Ae
+    | ClosedInfix Ae Infix Ae
+    | ClosedPrefix Ae Prefix Ae
+    | ClosedPostfix Ae Postfix Ae
+    | ClosedOuter Ae Closed Ae
+    | ClosedInner Ae Ae
     deriving (Eq, Ord, Show)
 type Ae = String
 
 data PrecedenceProduction =
-      Inl Int Infixl
-    | Inr Int Infixr
+      Inl Int Infix
+    | Inr Int Infix
     | Pre Int Prefix
     | Post Int Postfix
     | Closed Closed
-    deriving (Eq, Ord, Show)
+    deriving (Ord, Show)
+
+instance Eq PrecedenceProduction where
+  (==) (Inl _ _) (Inl _ _) = True
+  (==) (Inr _ _) (Inr _ _) = True
+  (==) (Pre _ _) (Pre _ _) = True
+  (==) (Post _ _) (Post _ _) = True
+  (==) (Closed _) (Closed _) = True
+  (==) _ _ = False
 
 type Precedence = Set PrecedenceProduction

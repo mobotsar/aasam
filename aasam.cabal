@@ -10,7 +10,7 @@ synopsis: Convert distfix (mixifx) precedence grammars to unambiguous context-fr
 -- description:
 
 -- A URL where users can report bugs.
-bug-reports: https://gitlab.com/mobotsar/distfixm
+bug-reports: https://gitlab.com/mobotsar/aasam
 
 author: Alexander Lucas
 maintainer: mobotsar@protonmail.com
@@ -25,7 +25,8 @@ license-file: LICENSE
 
 library
     exposed-modules: Aasam,
-                     Grammars
+                     Grammars,
+                     Util
 
     -- Modules included in this library but not exported.
     -- other-modules:
@@ -39,7 +40,7 @@ library
     hs-source-dirs: lib
     default-language: Haskell2010
 
-test-suite distfixm-test
+test-suite aasam-test
     default-language: Haskell2010
     type: exitcode-stdio-1.0
     hs-source-dirs: test
@@ -47,4 +48,6 @@ test-suite distfixm-test
     build-depends: base ^>=4.15.1.0,
                    HUnit,
                    test-framework,
-                   test-framework-hunit
+                   test-framework-hunit,
+                   containers,
+                   aasam
