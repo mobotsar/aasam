@@ -7,6 +7,7 @@ infixl 5 >.
 infixl 4 |>
 (|>) :: a -> (a -> b) -> b
 (|>) x f = f x
-infixl 4 <|
-(<|) :: a -> a
-(<|) f = f
+
+unwrapOr :: a -> Maybe a -> a
+unwrapOr _ (Just x) = x
+unwrapOr y _ = y
