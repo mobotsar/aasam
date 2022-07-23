@@ -7,8 +7,8 @@ import qualified Data.Set as Set
 import Data.List.NonEmpty ( NonEmpty )
 import Data.Data ( Data, Typeable )
 
-newtype NonTerminal = NonTerminal String deriving (Eq, Ord)
-newtype Terminal    = Terminal String deriving (Eq, Ord)
+newtype NonTerminal = NonTerminal String deriving (Eq, Ord, Show)
+newtype Terminal    = Terminal String deriving (Eq, Ord, Show)
 type CfgString      = [Either Terminal NonTerminal]
 type CfgProduction  = (NonTerminal, CfgString)
 type ContextFree    = (NonTerminal, Set CfgProduction)
@@ -23,4 +23,5 @@ data PrecedenceProduction =
 type Precedence = Set.Set PrecedenceProduction
 
 -- Precedences must always be positive integers.
--- 
+-- No initial sequence of operator words may also be the whole sequence of another operator.
+-- No initial operator word may also be a subsequent operator word.

@@ -8,7 +8,7 @@ import Data.List
 import qualified Data.List.NonEmpty
 import Grammars
 import Util
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty, nonEmpty)
 import Data.Function (on)
 
 import Data.Data (toConstr)
@@ -16,16 +16,13 @@ import GHC.Stats (RTSStats(par_copied_bytes))
 import qualified Data.Foldable
 
 
-m :: Precedence -> ContextFree
-m prec = cfg where
+-- TODO: Make multiple operators of identical precedence and fixity work. A post-generation pass is probably easiest.
+-- TODO: Add constraints such that invalid input grammars are rejected.
+-- TODO: Add a production for AE -> (all the operators words).
+-- TODO: Seems like everything except closedCfg is working properly. Make it all work properly.
+m :: Precedence -> Maybe ContextFree
+m prec = Just cfg where
     classes = Set.toList prec |> groupBy (on (==) toConstr)
-        -- fixityEq (Infixl _ _) (Infixl _ _) = True
-        -- fixityEq (Infixr _ _) (Infixr _ _) = True
-        -- fixityEq (Prefix _ _) (Prefix _ _) = True
-        -- fixityEq (Postfix _ _) (Postfix _ _) = True
-        -- fixityEq (Closed _) (Closed _) = True
-        -- fixityEq _ _ = False
-    thingy a b = toConstr a == b
 
     (prefixes', postfixes', infixls, infixrs, closes) =
         (select idPrefix, select idPostfix, selectPQ idInfixl, selectPQ idInfixr, selectPQ idClosed) where
@@ -57,50 +54,50 @@ m prec = cfg where
     nt prec p q = NonTerminal (show prec ++ show p ++ show q)
 
     prefixCfg :: Set CfgProduction
-    prefixCfg = convertClass rule prefixes where
-        rule prec p q words = Set.singleton a where
-            a = (nt prec p q, [Right (nt (prec - 1) (p + 1) q)])
+    prefixCfg = Set.empty
+    -- prefixCfg = convertClass rule prefixes where
+    --     rule prec p q words = Set.singleton a where
+    --         a = (nt prec p q, [Right (nt (prec - 1) (p + 1) q)])
 
     postfixCfg :: Set CfgProduction
-    postfixCfg = convertClass rule postfixes where
-        rule prec p q words = Set.singleton a where
-            a = (nt prec p q, [Right (nt (prec - 1) p (q + 1))])
+    postfixCfg = Set.empty 
+    -- postfixCfg = convertClass rule postfixes where
+    --     rule prec p q words = Set.singleton a where
+    --         a = (nt prec p q, [Right (nt (prec - 1) p (q + 1))])
 
     infixlCfg :: Set CfgProduction
-    infixlCfg = convertClass rule infixls where
-        rule prec p q words = Set.fromList [a, b] where
-            a = (nt prec p q, Right (nt prec 0 q) : inner ++ [Right (nt (prec - 1) p 0)]) where
-                inner = map (Left . Terminal) words |> distribute (Right (NonTerminal "!")) -- change this to change extendedness
-            b = (nt prec p q, [Right (nt (prec - 1) p q)])
+    infixlCfg = Set.empty 
+    -- infixlCfg = convertClass rule infixls where
+    --     rule prec p q words = Set.fromList [a, b] where
+    --         a = (nt prec p q, Right (nt prec 0 q) : inner ++ [Right (nt (prec - 1) p 0)]) where
+    --             inner = map (Left . Terminal) words |> intersperse (Right (NonTerminal "!start")) -- change this to change extendedness
+    --         b = (nt prec p q, [Right (nt (prec - 1) p q)])
 
     infixrCfg :: Set CfgProduction
-    infixrCfg = convertClass rule infixrs where
-        rule prec p q words = Set.fromList [a, b] where
-            a = (nt prec p q, Right (nt (prec - 1) 0 q) : inner ++ [Right (nt prec p 0)]) where
-                inner = map (Left . Terminal) words |> distribute (Right (NonTerminal "!")) -- change this to change extendedness
-            b = (nt prec p q, [Right (nt (prec - 1) p q)])
+    infixrCfg = Set.empty 
+    -- infixrCfg = convertClass rule infixrs where
+    --     rule prec p q words = Set.fromList [a, b] where
+    --         a = (nt prec p q, Right (nt (prec - 1) 0 q) : inner ++ [Right (nt prec p 0)]) where
+    --             inner = map (Left . Terminal) words |> intersperse (Right (NonTerminal "!start")) -- change this to change extendedness
+    --         b = (nt prec p q, [Right (nt (prec - 1) p q)])
 
     closedCfg :: Set CfgProduction
-    closedCfg = convertClass rule closes |> assignBang where
+    -- closedCfg = Set.empty 
+    closedCfg = convertClass rule closes where
         rule prec p q words = foldl (\a e -> Set.union a $ jsets e) Set.empty (zip prefixes [1..p]) where
             jsets ((preprec, prep, preq, pre), i) = foldl (\a e -> Set.union a $ single e) Set.empty (zip postfixes [1..q]) where
                 single ((postprec, postp, postq, post), j) = Set.fromList [a, b, c] where
                     a = (nt 0 p q, [Right (NonTerminal "AE")])
                     b = (nt 0 p q, op ++ [Right (nt preprec (p - i) 0)]) where
-                        op = map (Left . Terminal) (getWords pre) |> distribute (Right (NonTerminal "!"))
+                        op = map (Left . Terminal) (getWords pre) |> intersperse (Right (NonTerminal "!start"))
                     c = (nt 0 p q, Right (nt postprec 0 (q - j)) : op) where
-                        op = map (Left . Terminal) (getWords post) |> distribute (Right (NonTerminal "!"))
-        assignBang :: Set CfgProduction -> Set CfgProduction
-        assignBang prods = Set.map (\(k, l) -> if k == maxp then (NonTerminal "!", l) else (k, l)) prods where
-            maxp = maximumBy (\(NonTerminal x, _) (NonTerminal y, _) -> compare x y) prods |> fst
+                        op = map (Left . Terminal) (getWords post) |> intersperse (Right (NonTerminal "!start"))
 
     cfg :: ContextFree
-    cfg = (NonTerminal "!", foldl Set.union Set.empty [prefixCfg, postfixCfg, infixlCfg, infixrCfg, closedCfg])
-
-    distribute :: a -> [a] -> [a]
-    distribute _ [] = []
-    distribute _ [x] = [x]
-    distribute e (x : xs) = x : e : distribute e xs
+    cfg = (NonTerminal "!start", assignStartSym prods) where
+        prods = foldl Set.union Set.empty [prefixCfg, postfixCfg, infixlCfg, infixrCfg, closedCfg]
+        assignStartSym prods = Set.map (\(k, l) -> if k == maxp then (NonTerminal "!start", l) else (k, l)) prods where
+            maxp = maximumBy (\(NonTerminal x, _) (NonTerminal y, _) -> compare x y) prods |> fst
 
     getWords :: PrecedenceProduction -> [String]
     getWords = flip doGeneric (\_ y -> Data.List.NonEmpty.toList y)
