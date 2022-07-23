@@ -6,6 +6,7 @@ import Test.HUnit (Test(..), Assertable(assert), Assertion, assertEqual)
 import Test.Framework.Providers.API (Test(Test))
 import qualified Data.Set as Set
 import Grammars
+import Util
 import Aasam
 import qualified Data.List as List
 -- import Data.List.NonEmpty (NonEmpty, nonEmpty)
@@ -27,7 +28,7 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
-labeledTests = testMap [("hello", d (m pg), (NonTerminal "String", Set.empty))]
+labeledTests = testMap [("hello", d (m pg) |> snd |> Set.toList |> List.length, 15)]
 
 pg :: Precedence 
 pg = Set.fromList [
