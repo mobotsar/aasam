@@ -24,5 +24,5 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
-labeledTests = empt
+labeledTests = testMap [("hello", "", "")]
 

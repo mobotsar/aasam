@@ -11,3 +11,6 @@ infixl 4 |>
 unwrapOr :: a -> Maybe a -> a
 unwrapOr _ (Just x) = x
 unwrapOr y _ = y
+
+tup :: a -> b -> (a, b)
+tup a b = (a, b)
