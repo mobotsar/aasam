@@ -18,7 +18,6 @@ import qualified Data.Foldable
 
 -- TODO: Make multiple operators of identical precedence and fixity work. A post-generation pass is probably easiest.
 -- TODO: Add constraints such that invalid input grammars are rejected.
--- TODO: Add a production for AE -> (all the operators words).
 -- TODO: Seems like everything except closedCfg is working properly. Make it all work properly.
 m :: Precedence -> Maybe ContextFree
 m prec = Just cfg where
@@ -60,18 +59,18 @@ m prec = Just cfg where
     --         a = (nt prec p q, [Right (nt (prec - 1) (p + 1) q)])
 
     postfixCfg :: Set CfgProduction
-    -- postfixCfg = Set.empty
-    postfixCfg = convertClass rule postfixes where
-        rule prec p q words = Set.singleton a where
-            a = (nt prec p q, [Right (nt (prec - 1) p (q + 1))])
+    postfixCfg = Set.empty
+    -- postfixCfg = convertClass rule postfixes where
+    --     rule prec p q words = Set.singleton a where
+    --         a = (nt prec p q, [Right (nt (prec - 1) p (q + 1))])
 
     infixlCfg :: Set CfgProduction
-    -- infixlCfg = Set.empty
-    infixlCfg = convertClass rule infixls where
-        rule prec p q words = Set.fromList [a, b] where
-            a = (nt prec p q, Right (nt prec 0 q) : inner ++ [Right (nt (prec - 1) p 0)]) where
-                inner = map (Left . Terminal) words |> intersperse (Right (NonTerminal "!start")) -- change this to change extendedness
-            b = (nt prec p q, [Right (nt (prec - 1) p q)])
+    infixlCfg = Set.empty
+    -- infixlCfg = convertClass rule infixls where
+    --     rule prec p q words = Set.fromList [a, b] where
+    --         a = (nt prec p q, Right (nt prec 0 q) : inner ++ [Right (nt (prec - 1) p 0)]) where
+    --             inner = map (Left . Terminal) words |> intersperse (Right (NonTerminal "!start")) -- change this to change extendedness
+    --         b = (nt prec p q, [Right (nt (prec - 1) p q)])
 
     infixrCfg :: Set CfgProduction
     infixrCfg = Set.empty
