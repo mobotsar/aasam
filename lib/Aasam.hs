@@ -81,33 +81,23 @@ m prec = Just cfg where
     --         b = (nt prec p q, [Right (nt (prec - 1) p q)])
 
     closedCfg :: Set CfgProduction
-    -- closedCfg = Set.empty 
-    closedCfg = convertClass rule closes where
-        rule prec p q words = foldl (\a e -> Set.union a $ jsets e) Set.empty (zip prefixes [1..p]) where
-            jsets ((preprec, prep, preq, pre), i) = foldl (\a e -> Set.union a $ single e) Set.empty (zip postfixes [1..q]) where
-                single ((postprec, postp, postq, post), j) = Set.fromList [a, b, c] where
-                    a = (nt 0 p q, [Right (NonTerminal "AE")])
-                    b = (nt 0 p q, op ++ [Right (nt preprec (p - i) 0)]) where
-                        op = map (Left . Terminal) (getWords pre) |> intersperse (Right (NonTerminal "!start"))
-                    c = (nt 0 p q, Right (nt postprec 0 (q - j)) : op) where
-                        op = map (Left . Terminal) (getWords post) |> intersperse (Right (NonTerminal "!start"))
+    -- closedCfg = Set.singleton (NonTerminal (show closes), [])
+    closedCfg = foldl (\a e -> Set.union a $ qset e) Set.empty [0..(length prefixes)] where
+        qset p = foldl (\a e -> Set.union a $ iset e `Set.union` jset e) Set.empty [0..(length postfixes)] where
+            iset q = foldl (\a e -> Set.union a $ ido e) (Set.singleton (nt 0 p q, [Right (NonTerminal "terminal")])) (zip prefixes [1..p]) where
+                ido ((preprec, prep, preq, pre), i) = Set.singleton (nt 0 p q, op ++ [Right (nt preprec (p-i) 0)]) where
+                    op = map (Left . Terminal) (getWords pre) |> intersperse (Right (NonTerminal "!start"))
+            jset q = foldl (\a e -> Set.union a $ jdo e) Set.empty (zip postfixes [1..q]) where
+                jdo ((postprec, postp, postq, post), j) = Set.singleton (nt 0 p q, Right (nt postprec 0 (q - j)) : op) where
+                    op = map (Left . Terminal) (getWords post) |> intersperse (Right (NonTerminal "!start"))
 
     getWords :: PrecedenceProduction -> [String]
     getWords = flip doGeneric (\_ y -> Data.List.NonEmpty.toList y)
 
     cfg :: ContextFree
-    cfg = (NonTerminal "!start", bindAE $ assignStartSym prods) where
+    cfg = (NonTerminal "!start", assignStartSym prods) where
         prods = foldl Set.union Set.empty [prefixCfg, postfixCfg, infixlCfg, infixrCfg, closedCfg]
-        assignStartSym prods = Set.map (\(k, l) -> if k == maxp then (NonTerminal "!start", l) else (k, l)) prods where
-            maxp = maximumBy (\(NonTerminal x, _) (NonTerminal y, _) -> compare x y) prods |> fst
-        bindAE :: Set CfgProduction -> Set CfgProduction
-        bindAE prods = Set.union prods $ foldl (\a e -> Set.union a $ Set.singleton (NonTerminal "AE", [Left (Terminal e)])) Set.empty nts where
-            nts :: [String]
-            nts = foldl (\a (n, s) -> foldl (\a e -> a ++ [strof e | isTerminal e]) [] s) [] prods where
-                isTerminal (Left (Terminal _)) = True
-                isTerminal _ = False
-                strof (Left (Terminal s)) = s
-                strof _ = ""
+        assignStartSym = id
 
 
 
@@ -119,4 +109,5 @@ doGeneric (Infixl prec words) f = f prec words
 doGeneric (Infixr prec words) f = f prec words
 doGeneric (Closed words) f = f 0 words
 
+-- validate :: Precedence -> 
 
