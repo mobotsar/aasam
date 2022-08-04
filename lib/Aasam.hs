@@ -43,11 +43,12 @@ makeClasses = groupSetBy fixeq where
 
 type UniquenessPair = (PrecedenceProduction, Precedence)
 
+-- This function returns a sae of upairs. A upair contains a production of a single precedence on the left,
+-- and the set of all productions of that precedence on the right (including the one on the left).
 classToPairSet :: Precedence -> Set UniquenessPair
 classToPairSet = groupSetBy preceq >. Set.map pair where
     pair :: Precedence -> UniquenessPair
-    pair prec = (left, Set.delete left prec) where
-        left = Set.elemAt 0 prec
+    pair prec = (Set.elemAt 0 prec, prec)
     preceq :: PrecedenceProduction -> PrecedenceProduction -> Bool
     preceq a b = prec a == prec b
 
@@ -59,7 +60,7 @@ type PqQuad = (Int, Int, PrecedenceProduction, Precedence)
 pqboundProduction :: Set UniquenessPair -> Set UniquenessPair -> UniquenessPair -> PqQuad
 pqboundProduction pre post (r, s) = (greater pre $ prec r, greater post $ prec r, r, s) where
     greater :: Set UniquenessPair -> Int -> Int
-    greater upairs n = Set.size $ Set.filter (\(r, s) -> prec r > n) upairs
+    greater upairs n = Set.size $ Set.filter (\(r, _) -> prec r > n) upairs
 
 pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set UniquenessPair) -> Set (Set PqQuad)
 pqboundClasses pre post = Set.map (Set.map (pqboundProduction pre post))
@@ -72,8 +73,15 @@ fill s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.f
         fn :: CfgProduction -> CfgProduction
         fn (x, rhs) = (x, re rhs) where
             re :: CfgString -> CfgString
-            re str = str -- TODO: finish this function by implementing `re`.
-                         -- Probably, `re` should match on the fixity/constructor of `pp` and use that to determine the appropriate interspersal pattern
+            re str = case pp of
+                Infixl prec words -> str
+                Infixr prec words -> str
+                Prefix prec words -> str
+                Postfix prec words -> str
+                Closed words -> str
+
+            -- TODO: finish this function by implementing `re`.
+            -- Probably, `re` should match on the fixity/constructor of `pp` and use that to determine the appropriate interspersal pattern
 
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
