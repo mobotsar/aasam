@@ -65,24 +65,46 @@ pqboundProduction pre post (r, s) = (greater pre $ prec r, greater post $ prec r
 pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set UniquenessPair) -> Set (Set PqQuad)
 pqboundClasses pre post = Set.map (Set.map (pqboundProduction pre post))
 
--- TODO: write a proper implementation of this that doesn't depend on List
+intersperseStart :: NonEmpty String -> CfgString
+intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
+
+
 fill :: Precedence -> Set CfgProduction -> Set CfgProduction
-fill s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.fromList where
-    reset :: PrecedenceProduction -> [CfgProduction] -> [CfgProduction]
-    reset pp = map fn where
-        fn :: CfgProduction -> CfgProduction
-        fn (x, rhs) = (x, re rhs) where
-            re :: CfgString -> CfgString
-            re str = case pp of
-                Infixl prec words -> str
-                Infixr prec words -> str
-                Prefix prec words -> str
-                Postfix prec words -> str
-                Closed words -> str
+fill s cfgprods = Set.union withTerminals withoutTerminals where
+    (left, withoutTerminals) = Set.partition hasTerminal cfgprods where
+        hasTerminal :: CfgProduction -> Bool
+        hasTerminal (_, words) = List.any isTerminal words
+    isTerminal :: Either Terminal NonTerminal -> Bool
+    isTerminal (Right (NonTerminal _)) = False
+    isTerminal (Left (Terminal _)) =  True
+    withTerminals = fill' s left where
+        -- TODO: write a proper implementation of this composition that doesn't depend on List
+        fill' s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.fromList where
+            reset :: PrecedenceProduction -> [CfgProduction] -> [CfgProduction]
+            reset pp = map fn where
+                fn :: CfgProduction -> CfgProduction
+                fn (x, rhs) = (x, re rhs) where
+                    re :: CfgString -> CfgString
+                    re str =
+                        case pp of
+                            Infixl prec words -> okie str words
+                            Infixr prec words -> okie str words
+                            Closed words -> clokie str words
+                            _ -> error "This should be impossible. Somehow, I got a CfgPorduction with no terminals."
+                        where
+                            okie :: CfgString -> NonEmpty String -> CfgString
+                            okie str words = List.head str : intersperseStart words ++ [List.last str]
+                            clokie :: CfgString -> NonEmpty String -> CfgString
+                            clokie str words =
+                                if isTerminal $ head str then
+                                    intersperseStart words ++ [last str]
+                                else
+                                    head str : intersperseStart words
 
-            -- TODO: finish this function by implementing `re`.
-            -- Probably, `re` should match on the fixity/constructor of `pp` and use that to determine the appropriate interspersal pattern
-
+-- AE production on `closedrule` must go to a non-terminal
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
 prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
+
+postrule :: Int -> Int -> PqQuad -> Set CfgProduction
+postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
