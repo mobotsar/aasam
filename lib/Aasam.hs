@@ -72,8 +72,9 @@ fill s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.f
         fn :: CfgProduction -> CfgProduction
         fn (x, rhs) = (x, re rhs) where
             re :: CfgString -> CfgString
-            re str = str -- TODO: finish this function by implementing `re`.
-                         -- Probably, `re` should match on the fixity/constructor of `pp` and use that to determine the appropriate interspersal pattern
+            re str = str
+            -- TODO: finish this function by implementing `re`.
+            -- Probably, `re` should match on the fixity/constructor of `pp` and use that to determine the appropriate interspersal pattern
 
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
