@@ -6,7 +6,7 @@ import Data.List
 import qualified Data.List.NonEmpty as DLNe
 import Grammars
 import Util
-import Data.List.NonEmpty (NonEmpty, nonEmpty)
+import Data.List.NonEmpty (NonEmpty)
 import Data.Function (on)
 
 import Data.Data (toConstr)
@@ -23,8 +23,8 @@ doGeneric (Infixl prec words) f = f prec words
 doGeneric (Infixr prec words) f = f prec words
 doGeneric (Closed words) f = f 0 words
 
-getWords :: PrecedenceProduction -> [String]
-getWords = flip doGeneric (\_ y -> DLNe.toList y)
+-- getWords :: PrecedenceProduction -> [String]
+-- getWords = flip doGeneric (\_ y -> DLNe.toList y)
 
 prec :: PrecedenceProduction -> Int
 prec = flip doGeneric const
@@ -68,7 +68,6 @@ pqboundClasses pre post = Set.map (Set.map (pqboundProduction pre post))
 intersperseStart :: NonEmpty String -> CfgString
 intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
 
-
 fill :: Precedence -> Set CfgProduction -> Set CfgProduction
 fill s cfgprods = Set.union withTerminals withoutTerminals where
     (left, withoutTerminals) = Set.partition hasTerminal cfgprods where
@@ -79,6 +78,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
     isTerminal (Left (Terminal _)) =  True
     withTerminals = fill' s left where
         -- TODO: write a proper implementation of this composition that doesn't depend on List
+        fill' :: Precedence -> Set CfgProduction -> Set CfgProduction
         fill' s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.fromList where
             reset :: PrecedenceProduction -> [CfgProduction] -> [CfgProduction]
             reset pp = map fn where
@@ -90,7 +90,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
                             Infixl prec words -> okie str words
                             Infixr prec words -> okie str words
                             Closed words -> clokie str words
-                            _ -> error "This should be impossible. Somehow, I got a CfgPorduction with no terminals."
+                            _ -> error "This should be impossible. Somehow, I got a CfgProduction with no terminals."
                         where
                             okie :: CfgString -> NonEmpty String -> CfgString
                             okie str words = List.head str : intersperseStart words ++ [List.last str]
