@@ -28,7 +28,10 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
-labeledTests = testMap [("hello", d (m pg), (NonTerminal "String", Set.empty))]
+labeledTests = []
+-- labeledTests = testMap [("hello", len d (m pg), 19)]
+
+len f = f >. snd >. Set.toList >. List.length 
 
 pg :: Precedence 
 pg = Set.fromList [
