@@ -12,8 +12,6 @@ import Data.Function (on)
 import Data.Data (toConstr)
 import qualified Data.List as List
 
-
--- TODO: Make multiple operators of identical precedence and fixity work.
 -- TODO: Add constraints such that all invalid input grammars are rejected.
 
 doGeneric :: PrecedenceProduction -> (Int -> NonEmpty String -> a) -> a
@@ -66,7 +64,7 @@ pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set Uniquenes
 pqboundClasses pre post = Set.map (Set.map (pqboundProduction pre post))
 
 intersperseStart :: NonEmpty String -> CfgString
-intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
+intersperseStart = fmap (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
 
 fill :: Precedence -> Set CfgProduction -> Set CfgProduction
 fill s cfgprods = Set.union withTerminals withoutTerminals where
@@ -87,24 +85,39 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
                     re :: CfgString -> CfgString
                     re str =
                         case pp of
-                            Infixl prec words -> okie str words
-                            Infixr prec words -> okie str words
-                            Closed words -> clokie str words
-                            _ -> error "This should be impossible. Somehow, I got a CfgProduction with no terminals."
+                            Infixl prec words -> kansas str words
+                            Infixr prec words -> kansas str words
+                            Closed words -> hawaii str words
+                            _ -> error "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals."
                         where
-                            okie :: CfgString -> NonEmpty String -> CfgString
-                            okie str words = List.head str : intersperseStart words ++ [List.last str]
-                            clokie :: CfgString -> NonEmpty String -> CfgString
-                            clokie str words =
+                            kansas :: CfgString -> NonEmpty String -> CfgString
+                            kansas str words = List.head str : intersperseStart words ++ [List.last str]
+                            hawaii :: CfgString -> NonEmpty String -> CfgString
+                            hawaii str words =
                                 if isTerminal $ head str then
                                     intersperseStart words ++ [last str]
                                 else
                                     head str : intersperseStart words
 
--- AE production on `closedrule` must go to a non-terminal
+-- The AE production on `closedrule` must go to a non-terminal.
+-- Relevant non-terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
+--   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
 prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
 postrule :: Int -> Int -> PqQuad -> Set CfgProduction
 postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
+
+inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
+inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
+    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) 
+    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)]) 
+
+inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
+inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
+    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)]) 
+    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)]) 
+
+closedrule :: Int -> Int -> PqQuad -> Set CfgProduction
+closedrule p q (_, _, r, s) = Set.empty
