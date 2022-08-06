@@ -1,8 +1,8 @@
 module Aasam where
 
-import Data.Set (Set)
+import Data.Set (Set, union, insert)
 import qualified Data.Set as Set
-import Data.List
+import Data.List (groupBy)
 import qualified Data.List.NonEmpty as DLNe
 import Grammars
 import Util
@@ -11,6 +11,8 @@ import Data.Function (on)
 
 import Data.Data (toConstr)
 import qualified Data.List as List
+import qualified Data.Foldable
+import Data.Bifunctor ( Bifunctor(bimap) )
 
 -- TODO: Add constraints such that all invalid input grammars are rejected.
 
@@ -21,8 +23,8 @@ doGeneric (Infixl prec words) f = f prec words
 doGeneric (Infixr prec words) f = f prec words
 doGeneric (Closed words) f = f 0 words
 
--- getWords :: PrecedenceProduction -> [String]
--- getWords = flip doGeneric (\_ y -> DLNe.toList y)
+getWords :: PrecedenceProduction -> [String]
+getWords = flip doGeneric (\_ y -> DLNe.toList y)
 
 prec :: PrecedenceProduction -> Int
 prec = flip doGeneric const
@@ -41,7 +43,7 @@ makeClasses = groupSetBy fixeq where
 
 type UniquenessPair = (PrecedenceProduction, Precedence)
 
--- This function returns a sae of upairs. A upair contains a production of a single precedence on the left,
+-- This function returns a set of upairs. A upair contains a production of a single precedence on the left,
 -- and the set of all productions of that precedence on the right (including the one on the left).
 classToPairSet :: Precedence -> Set UniquenessPair
 classToPairSet = groupSetBy preceq >. Set.map pair where
@@ -55,16 +57,16 @@ pairifyClasses = Set.map classToPairSet
 
 type PqQuad = (Int, Int, PrecedenceProduction, Precedence)
 
-pqboundProduction :: Set UniquenessPair -> Set UniquenessPair -> UniquenessPair -> PqQuad
-pqboundProduction pre post (r, s) = (greater pre $ prec r, greater post $ prec r, r, s) where
+pqboundUPair :: Set UniquenessPair -> Set UniquenessPair -> UniquenessPair -> PqQuad
+pqboundUPair pre post (r, s) = (greater pre $ prec r, greater post $ prec r, r, s) where
     greater :: Set UniquenessPair -> Int -> Int
     greater upairs n = Set.size $ Set.filter (\(r, _) -> prec r > n) upairs
 
 pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set UniquenessPair) -> Set (Set PqQuad)
-pqboundClasses pre post = Set.map (Set.map (pqboundProduction pre post))
+pqboundClasses pre post = Set.map (Set.map (pqboundUPair pre post))
 
 intersperseStart :: NonEmpty String -> CfgString
-intersperseStart = fmap (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
+intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
 
 fill :: Precedence -> Set CfgProduction -> Set CfgProduction
 fill s cfgprods = Set.union withTerminals withoutTerminals where
@@ -94,13 +96,13 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
                             kansas str words = List.head str : intersperseStart words ++ [List.last str]
                             hawaii :: CfgString -> NonEmpty String -> CfgString
                             hawaii str words =
-                                if isTerminal $ head str then
+                                if isTerminal (head str) then
                                     intersperseStart words ++ [last str]
                                 else
                                     head str : intersperseStart words
 
 -- The AE production on `closedrule` must go to a non-terminal.
--- Relevant non-terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
+-- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
 --   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
@@ -111,13 +113,87 @@ postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt 
 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
-    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) 
-    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)]) 
+    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a hack, basically. Just make r not in s.
+    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
-    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)]) 
-    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)]) 
+    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
+    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
-closedrule :: Int -> Int -> PqQuad -> Set CfgProduction
-closedrule p q (_, _, r, s) = Set.empty
+closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
+closedrule pres posts p q (_, _, r, s) =
+    fill s $ ae `insert` isets `union` jsets where
+        ae :: CfgProduction
+        ae = (nt 0 p q, [Right (NonTerminal "AE")])
+        isets :: Set CfgProduction
+        isets = foldl (\a e -> a `union` ido e) Set.empty (zip (Set.toList pres) [1..p]) where
+            ido :: (UniquenessPair, Int) -> Set CfgProduction
+            ido ((r, s), i) = Set.singleton (nt 0 p q, [Left (Terminal "evil"), Right (nt (prec r) (p - i) 0)])
+        jsets :: Set CfgProduction
+        jsets = foldl (\a e -> a `union` jdo e) Set.empty (zip (Set.toList posts) [1..q]) where
+            jdo :: (UniquenessPair, Int) -> Set CfgProduction
+            jdo ((r, s), j) = Set.singleton (nt 0 p q, [Right (nt (prec r) 0 (q - j)), Left (Terminal "evil")])
+
+convertClass :: (Int -> Int -> PqQuad -> Set CfgProduction) -> Set PqQuad -> Set CfgProduction
+convertClass rule = foldl (\a quad -> a `union` psets quad) Set.empty where
+    psets (pbound, qbound, r, s) = foldl (\a p -> a `union` qsets p) Set.empty [0..pbound] where
+        qsets p = foldl (\a q -> a `union` rule p q (pbound, qbound, r, s)) Set.empty [0..qbound]
+
+convertClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set PqQuad) -> Set CfgProduction
+convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.empty where
+    convertClassBranching :: Set PqQuad -> Set CfgProduction
+    convertClassBranching quads = convertClass rule quads where
+        rule = case Set.elemAt 0 quads of
+            (_, _, Infixl _ _, _) -> inlrule
+            (_, _, Infixr _ _, _) -> inrrule
+            (_, _, Prefix _ _, _) -> prerule
+            (_, _, Postfix _ _, _) -> postrule
+            (_, _, Closed _, _) -> closedrule pres posts
+
+-- unwrap :: Maybe a -> a
+-- unwrap (Just x) = x
+-- unwrap _ = error "Tried to unwrap Nothing. This is a bug in Aasam."
+
+m :: Precedence -> Maybe ContextFree
+m precg = if w precg then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
+    upairClasses = makeClasses precg |> pairifyClasses
+    (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses, unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses) where
+        isPre :: Set UniquenessPair -> Bool
+        isPre clas =
+            case Set.elemAt 0 clas of
+                (Prefix _ _, _) -> True
+                _ -> False
+        isPost clas =
+            case Set.elemAt 0 clas of
+                (Postfix _ _, _) -> True
+                _ -> False
+    prods = pqboundClasses pre post upairClasses |> convertClasses pre post
+    w :: Precedence -> Bool
+    w precg = positive && noInitWhole && noInitSubseq && precDisjoint where
+        positive = all (prec >. (>) 0) precg
+        noInitSubseq = Set.disjoint initials subsequents where
+            (initials, subsequents) = foldl fn (Set.empty, Set.empty) precg where
+                fn (i, s) e = let words = getWords e in
+                    (insert (head words) i, (tail words |> Set.fromList) `union` s)
+        noInitWhole = True
+        precDisjoint = True
+    addAes :: Set CfgProduction -> Set CfgProduction
+    addAes = union aes where
+        aes :: Set CfgProduction
+        aes = Set.filter isAtomic precg
+            |> Set.map (\(Closed words) -> (NonTerminal "AE", DLNe.toList words |> map (Left . Terminal))) where
+                isAtomic :: PrecedenceProduction -> Bool
+                isAtomic (Closed (_ DLNe.:| [])) = True
+                isAtomic _ = False
+    assignStart :: Set CfgProduction -> Set CfgProduction
+    assignStart = Set.map (lhsMapped `bimap` rhsMapped) where
+        lhsMapped :: NonTerminal -> NonTerminal
+        lhsMapped lhs = if lhs == nt highestPrecedence 0 0 then NonTerminal "!start" else lhs
+        rhsMapped = map submap where
+            submap :: Either Terminal NonTerminal -> Either Terminal NonTerminal
+            submap (Right x) = Right $ lhsMapped x
+            submap y = y
+        highestPrecedence = foldl (\a e -> if prec e > a then prec e else a) 0 precg
+
+-- write w

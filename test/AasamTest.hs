@@ -28,18 +28,17 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
-labeledTests = []
--- labeledTests = testMap [("hello", len d (m pg), 19)]
+-- labeledTests = testMap [("okay", Nothing, m pg)]
+labeledTests = testMap [("okay", 20, m pg |> unwrapOr (nt 0 0 0, Set.empty) |> snd |> List.length)]
 
-len f = f >. snd >. Set.toList >. List.length 
 
-pg :: Precedence 
+pg :: Precedence
 pg = Set.fromList [
-          Postfix 4 (singleton "?")
-        , Infixl 3 (singleton "+")
-        , Infixl 1 (singleton "*")
-        , Postfix 2 (singleton "!")
-        , Closed (singleton "int")
+          Postfix 4 (fromList ["?"])
+         , Infixl 3 (fromList ["+"])
+        , Infixl 1 (fromList ["*"])
+        , Postfix 2 (fromList ["!"])
+        , Closed (fromList ["int"])
         ]
 
 
