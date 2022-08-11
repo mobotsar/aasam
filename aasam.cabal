@@ -4,7 +4,7 @@ name: aasam
 version: 0.1.0.0
 
 -- A short (one-line) description of the package.
-synopsis: Convert distfix (mixifx) precedence grammars to unambiguous context-free grammars.
+synopsis: Convert distfix precedence grammars to unambiguous context-free grammars.
 
 -- A longer description of the package.
 -- description:

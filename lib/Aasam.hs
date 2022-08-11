@@ -1,4 +1,4 @@
-module Aasam where
+module Aasam (m) where
 
 import Data.Set (Set, union, insert)
 import qualified Data.Set as Set
@@ -163,7 +163,7 @@ m precg =
                 (Postfix _ _, _) -> True
                 _ -> False
     prods = pqboundClasses pre post upairClasses |> convertClasses pre post
-    w = positive && noInitWhole && noInitSubseq && precDisjoint where
+    w = positive && noInitWhole && noInitSubseq && classesPrecDisjoint where
         positive = all fn precg where
             fn (Closed _) = True
             fn x = prec x > 0
@@ -180,7 +180,7 @@ m precg =
                         prefixedBy (x:xs) [] = True
                         prefixedBy [] _ = False
                         prefixedBy (x:xs) (y:ys) = x == y && prefixedBy xs ys
-        precDisjoint =
+        classesPrecDisjoint =
             allDisjoint precGroups where
                 allDisjoint :: Ord a => [Set a] -> Bool
                 allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs

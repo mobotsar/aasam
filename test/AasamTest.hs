@@ -46,3 +46,4 @@ d :: Maybe ContextFree -> ContextFree
 d (Just x) = x
 d Nothing = (NonTerminal "String", Set.empty)
 
+unwrap = unwrapOr (error "fail")
