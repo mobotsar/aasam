@@ -118,7 +118,6 @@ inrrule p q (_, _, r, s) =
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
 closedrule pres posts p q (_, _, r, s) =
-    -- fill s $ ae `insert` isets `union` jsets where
     ae `insert` isets `union` jsets where
         ae :: CfgProduction
         ae = (nt 0 p q, [Right (NonTerminal "AE")])
@@ -182,10 +181,12 @@ m precg =
                         prefixedBy [] _ = False
                         prefixedBy (x:xs) (y:ys) = x == y && prefixedBy xs ys
         precDisjoint =
-            List.map (foldl (flip insert) Set.empty) (Set.toList classes) |> allDisjoint where
+            allDisjoint precGroups where
                 allDisjoint :: Ord a => [Set a] -> Bool
                 allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs
                 allDisjoint [] = True
+                precGroups :: [Set Int]
+                precGroups = List.map (foldl (\a e -> insert (prec e) a) Set.empty) (Set.toList classes)
     addAes :: Set CfgProduction -> Set CfgProduction
     addAes = union aes where
         aes :: Set CfgProduction

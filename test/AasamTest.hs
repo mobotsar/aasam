@@ -35,7 +35,7 @@ labeledTests = testMap [("okay", Nothing, m pg)]
 pg :: Precedence
 pg = Set.fromList [
           Postfix 4 (fromList ["?"])
-         , Infixl 3 (fromList ["+"])
+        , Infixl 3 (fromList ["+"])
         , Infixl 1 (fromList ["*"])
         , Postfix 2 (fromList ["!"])
         , Closed (fromList ["int"])
