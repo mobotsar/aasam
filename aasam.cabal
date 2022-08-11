@@ -25,11 +25,10 @@ license-file: LICENSE
 
 library
     exposed-modules: Aasam,
-                     Grammars,
-                     Util
+                     Grammars
 
     -- Modules included in this library but not exported.
-    -- other-modules:
+    other-modules: Util
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

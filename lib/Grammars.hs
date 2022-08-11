@@ -20,7 +20,7 @@ data PrecedenceProduction =
     | Infixr  Int (NonEmpty String)
     | Closed      (NonEmpty String)
     deriving (Eq, Ord, Show, Typeable, Data)
-type Precedence = Set.Set PrecedenceProduction
+type Precedence = Set PrecedenceProduction
 
 -- Precedences must always be positive integers.
 -- No initial sequence of operator words may also be the whole sequence of another operator.
