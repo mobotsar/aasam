@@ -113,7 +113,7 @@ postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt 
 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
-    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a hack, basically. Just make r not in s.
+    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
@@ -156,8 +156,9 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
 -- unwrap _ = error "Tried to unwrap Nothing. This is a bug in Aasam."
 
 m :: Precedence -> Maybe ContextFree
-m precg = if w precg then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
-    upairClasses = makeClasses precg |> pairifyClasses
+m precg = if w then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
+    classes = makeClasses precg
+    upairClasses = pairifyClasses classes
     (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses, unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses) where
         isPre :: Set UniquenessPair -> Bool
         isPre clas =
@@ -169,15 +170,28 @@ m precg = if w precg then Just (NonTerminal "!start", addAes (assignStart prods)
                 (Postfix _ _, _) -> True
                 _ -> False
     prods = pqboundClasses pre post upairClasses |> convertClasses pre post
-    w :: Precedence -> Bool
-    w precg = positive && noInitWhole && noInitSubseq && precDisjoint where
-        positive = all (prec >. (>) 0) precg
-        noInitSubseq = Set.disjoint initials subsequents where
+    w = positive && noInitWhole && noInitSubseq && precDisjoint where
+        positive = all fn precg where
+            fn (Closed _) = True
+            fn x = prec x > 0
+        noInitSubseq =
+            Set.disjoint initials subsequents where
             (initials, subsequents) = foldl fn (Set.empty, Set.empty) precg where
-                fn (i, s) e = let words = getWords e in
-                    (insert (head words) i, (tail words |> Set.fromList) `union` s)
-        noInitWhole = True
-        precDisjoint = True
+                fn (i, s) e = (insert (head words) i, (tail words |> Set.fromList) `union` s) where
+                    words = getWords e
+        noInitWhole =
+            all fx precg where
+                fx x = all fy precg where
+                    fy y = getWords x `notPrefixedBy` getWords y where
+                        notPrefixedBy :: Eq a => [a] -> [a] -> Bool
+                        notPrefixedBy _ [] = True
+                        notPrefixedBy [] (y:_) = False
+                        notPrefixedBy (x:xs) (y:ys) = (x == y) && notPrefixedBy xs ys
+        precDisjoint =
+            List.map (foldl (flip insert) Set.empty) (Set.toList classes) |> allDisjoint where
+                allDisjoint :: Ord a => [Set a] -> Bool
+                allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs
+                allDisjoint [] = True
     addAes :: Set CfgProduction -> Set CfgProduction
     addAes = union aes where
         aes :: Set CfgProduction
@@ -187,13 +201,15 @@ m precg = if w precg then Just (NonTerminal "!start", addAes (assignStart prods)
                 isAtomic (Closed (_ DLNe.:| [])) = True
                 isAtomic _ = False
     assignStart :: Set CfgProduction -> Set CfgProduction
-    assignStart = Set.map (lhsMapped `bimap` rhsMapped) where
-        lhsMapped :: NonTerminal -> NonTerminal
-        lhsMapped lhs = if lhs == nt highestPrecedence 0 0 then NonTerminal "!start" else lhs
-        rhsMapped = map submap where
+    assignStart = Set.map $ bimap lhsMap rhsMap where
+        lhsMap :: NonTerminal -> NonTerminal
+        lhsMap lhs = if lhs == nt highestPrecedence 0 0 then NonTerminal "!start" else lhs
+        rhsMap = map submap where
             submap :: Either Terminal NonTerminal -> Either Terminal NonTerminal
-            submap (Right x) = Right $ lhsMapped x
+            submap (Right x) = Right $ lhsMap x
             submap y = y
         highestPrecedence = foldl (\a e -> if prec e > a then prec e else a) 0 precg
 
--- write w
+
+    -- forall px, py in precg, not (prefixedBy px py)
+

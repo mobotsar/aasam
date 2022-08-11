@@ -28,8 +28,8 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
--- labeledTests = testMap [("okay", Nothing, m pg)]
-labeledTests = testMap [("okay", 20, m pg |> unwrapOr (nt 0 0 0, Set.empty) |> snd |> List.length)]
+labeledTests = testMap [("okay", Nothing, m pg)]
+-- labeledTests = testMap [("okay", 20, m pg |> unwrapOr (nt 0 0 0, Set.empty) |> snd |> List.length)]
 
 
 pg :: Precedence
