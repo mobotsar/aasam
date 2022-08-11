@@ -182,11 +182,11 @@ m precg = if w then Just (NonTerminal "!start", addAes (assignStart prods)) else
         noInitWhole =
             all fx precg where
                 fx x = all fy precg where
-                    fy y = getWords x `notPrefixedBy` getWords y where
-                        notPrefixedBy :: Eq a => [a] -> [a] -> Bool
-                        notPrefixedBy _ [] = True
-                        notPrefixedBy [] (y:_) = False
-                        notPrefixedBy (x:xs) (y:ys) = (x == y) && notPrefixedBy xs ys
+                    fy y = not (getWords x `prefixedBy` getWords y) where
+                        prefixedBy :: Eq a => [a] -> [a] -> Bool
+                        prefixedBy (x:xs) [] = True
+                        prefixedBy [] _ = False
+                        prefixedBy (x:xs) (y:ys) = x == y && prefixedBy xs ys
         precDisjoint =
             List.map (foldl (flip insert) Set.empty) (Set.toList classes) |> allDisjoint where
                 allDisjoint :: Ord a => [Set a] -> Bool
