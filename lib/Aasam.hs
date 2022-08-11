@@ -87,44 +87,34 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
                         case pp of
                             Infixl prec words -> kansas str words
                             Infixr prec words -> kansas str words
-                            Closed words -> hawaii str words
-                            _ -> error "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals."
+                            _ -> error "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals, or a Closed production."
                         where
                             kansas :: CfgString -> NonEmpty String -> CfgString
                             kansas str words = List.head str : intersperseStart words ++ [List.last str]
-                            hawaii :: CfgString -> NonEmpty String -> CfgString
-                            hawaii str words = str
-                                -- | length words == 1 =
-                                --     DLNe.toList words |> map (Left . Terminal)
-                                -- | isTerminal (head str) =
-                                --     intersperseStart words ++ [last str]
-                                -- | isTerminal (last str) =
-                                --     head str : intersperseStart words
-                                -- | otherwise = error "wtf"
 
 -- The AE production on `closedrule` must go to a non-terminal.
 -- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
 --   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
-prerule p q (_, _, r, s) = Set.empty
-    -- fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
+prerule p q (_, _, r, s) =
+    fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
 postrule :: Int -> Int -> PqQuad -> Set CfgProduction
-postrule p q (_, _, r, s) = Set.empty
-    -- fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
+postrule p q (_, _, r, s) =
+    fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inlrule p q (_, _, r, s) = Set.empty
-    -- fill s $ Set.fromList [a, b] where
-    --     a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
-    --     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
+inlrule p q (_, _, r, s) =
+    fill s $ Set.fromList [a, b] where
+        a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
+        b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inrrule p q (_, _, r, s) = Set.empty
-    -- fill s $ Set.fromList [a, b] where
-    --     a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
-    --     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
+inrrule p q (_, _, r, s) =
+    fill s $ Set.fromList [a, b] where
+        a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
+        b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
 closedrule pres posts p q (_, _, r, s) =
@@ -159,8 +149,8 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
 
 m :: Precedence -> Maybe ContextFree
 m precg =
-    -- if w then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
-    if w then Just (NonTerminal "!start", prods) else Nothing where
+    if w then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
+    -- if w then Just (NonTerminal "!start", prods) else Nothing where
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses, unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses) where
