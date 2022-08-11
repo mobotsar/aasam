@@ -14,8 +14,6 @@ import qualified Data.List as List
 import qualified Data.Foldable
 import Data.Bifunctor ( Bifunctor(bimap) )
 
--- TODO: Add constraints such that all invalid input grammars are rejected.
-
 doGeneric :: PrecedenceProduction -> (Int -> NonEmpty String -> a) -> a
 doGeneric (Prefix prec words) f = f prec words
 doGeneric (Postfix prec words) f = f prec words
@@ -95,45 +93,53 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
                             kansas :: CfgString -> NonEmpty String -> CfgString
                             kansas str words = List.head str : intersperseStart words ++ [List.last str]
                             hawaii :: CfgString -> NonEmpty String -> CfgString
-                            hawaii str words =
-                                if isTerminal (head str) then
-                                    intersperseStart words ++ [last str]
-                                else
-                                    head str : intersperseStart words
+                            hawaii str words = str
+                                -- | length words == 1 =
+                                --     DLNe.toList words |> map (Left . Terminal)
+                                -- | isTerminal (head str) =
+                                --     intersperseStart words ++ [last str]
+                                -- | isTerminal (last str) =
+                                --     head str : intersperseStart words
+                                -- | otherwise = error "wtf"
 
 -- The AE production on `closedrule` must go to a non-terminal.
 -- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
 --   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
-prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
+prerule p q (_, _, r, s) = Set.empty
+    -- fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
 postrule :: Int -> Int -> PqQuad -> Set CfgProduction
-postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
+postrule p q (_, _, r, s) = Set.empty
+    -- fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
-    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
-    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
+inlrule p q (_, _, r, s) = Set.empty
+    -- fill s $ Set.fromList [a, b] where
+    --     a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
+    --     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
-    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
-    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
+inrrule p q (_, _, r, s) = Set.empty
+    -- fill s $ Set.fromList [a, b] where
+    --     a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
+    --     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
 closedrule pres posts p q (_, _, r, s) =
-    fill s $ ae `insert` isets `union` jsets where
+    -- fill s $ ae `insert` isets `union` jsets where
+    ae `insert` isets `union` jsets where
         ae :: CfgProduction
         ae = (nt 0 p q, [Right (NonTerminal "AE")])
         isets :: Set CfgProduction
         isets = foldl (\a e -> a `union` ido e) Set.empty (zip (Set.toList pres) [1..p]) where
             ido :: (UniquenessPair, Int) -> Set CfgProduction
-            ido ((r, s), i) = Set.singleton (nt 0 p q, [Left (Terminal "evil"), Right (nt (prec r) (p - i) 0)])
+            ido ((r, s), i) = Set.singleton (nt 0 p q, intersperseStart (getWords r |> DLNe.fromList) ++ [Right (nt (prec r) (p - i) 0)])
         jsets :: Set CfgProduction
         jsets = foldl (\a e -> a `union` jdo e) Set.empty (zip (Set.toList posts) [1..q]) where
             jdo :: (UniquenessPair, Int) -> Set CfgProduction
-            jdo ((r, s), j) = Set.singleton (nt 0 p q, [Right (nt (prec r) 0 (q - j)), Left (Terminal "evil")])
+            jdo ((r, s), j) = Set.singleton (nt 0 p q, Right (nt (prec r) 0 (q - j)) : intersperseStart (getWords r |> DLNe.fromList))
 
 convertClass :: (Int -> Int -> PqQuad -> Set CfgProduction) -> Set PqQuad -> Set CfgProduction
 convertClass rule = foldl (\a quad -> a `union` psets quad) Set.empty where
@@ -151,12 +157,10 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
             (_, _, Postfix _ _, _) -> postrule
             (_, _, Closed _, _) -> closedrule pres posts
 
--- unwrap :: Maybe a -> a
--- unwrap (Just x) = x
--- unwrap _ = error "Tried to unwrap Nothing. This is a bug in Aasam."
-
 m :: Precedence -> Maybe ContextFree
-m precg = if w then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
+m precg =
+    -- if w then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
+    if w then Just (NonTerminal "!start", prods) else Nothing where
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses, unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses) where
@@ -209,7 +213,3 @@ m precg = if w then Just (NonTerminal "!start", addAes (assignStart prods)) else
             submap (Right x) = Right $ lhsMap x
             submap y = y
         highestPrecedence = foldl (\a e -> if prec e > a then prec e else a) 0 precg
-
-
-    -- forall px, py in precg, not (prefixedBy px py)
-
