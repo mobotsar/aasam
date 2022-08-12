@@ -28,11 +28,11 @@ license-file: LICENSE
 category: parsing
 
 library
-    exposed-modules: Aasam,
-                     Grammars
+    exposed-modules: Aasam
 
     -- Modules included in this library but not exported.
-    other-modules: Util
+    other-modules: Util,
+                   Grammars
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

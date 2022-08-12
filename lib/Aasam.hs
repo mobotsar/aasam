@@ -1,4 +1,4 @@
-module Aasam (m) where
+module Aasam (m, module Grammars) where
 
 import Data.Set (Set, union, insert)
 import qualified Data.Set as Set
@@ -104,38 +104,33 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
 --   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
 -- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
-prerule p q (_, _, r, s) =
-    fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
+prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
 postrule :: Int -> Int -> PqQuad -> Set CfgProduction
-postrule p q (_, _, r, s) =
-    fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
+postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inlrule p q (_, _, r, s) =
-    fill s $ Set.fromList [a, b] where
-        a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
-        b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
+inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
+    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
+    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inrrule p q (_, _, r, s) =
-    fill s $ Set.fromList [a, b] where
-        a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
-        b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
+inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
+    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
+    b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
-closedrule pres posts p q (_, _, r, s) =
-    insert ae isets `union` jsets where
-        ae :: CfgProduction
-        ae = (nt 0 p q, [Right (NonTerminal "AE")])
-        isets :: Set CfgProduction
-        isets = foldl (\a e -> a `union` ido e) Set.empty (zip (Set.toList pres) [1..p]) where
-            ido :: (UniquenessPair, Int) -> Set CfgProduction
-            ido ((r, s), i) = Set.singleton (nt 0 p q, intersperseStart (getWords r |> DLNe.fromList) ++ [Right (nt (prec r) (p - i) 0)])
-        jsets :: Set CfgProduction
-        jsets = foldl (\a e -> a `union` jdo e) Set.empty (zip (Set.toList posts) [1..q]) where
-            jdo :: (UniquenessPair, Int) -> Set CfgProduction
-            jdo ((r, s), j) = Set.singleton (nt 0 p q, Right (nt (prec r) 0 (q - j)) : intersperseStart (getWords r |> DLNe.fromList))
+closedrule pres posts p q (_, _, r, s) = insert ae isets `union` jsets where
+    ae :: CfgProduction
+    ae = (nt 0 p q, [Right (NonTerminal "AE")])
+    isets :: Set CfgProduction
+    isets = foldl (\a e -> a `union` ido e) Set.empty (zip (Set.toList pres) [1..p]) where
+        ido :: (UniquenessPair, Int) -> Set CfgProduction
+        ido ((r, s), i) = Set.singleton (nt 0 p q, intersperseStart (getWords r |> DLNe.fromList) ++ [Right (nt (prec r) (p - i) 0)])
+    jsets :: Set CfgProduction
+    jsets = foldl (\a e -> a `union` jdo e) Set.empty (zip (Set.toList posts) [1..q]) where
+        jdo :: (UniquenessPair, Int) -> Set CfgProduction
+        jdo ((r, s), j) = Set.singleton (nt 0 p q, Right (nt (prec r) 0 (q - j)) : intersperseStart (getWords r |> DLNe.fromList))
 
 convertClass :: (Int -> Int -> PqQuad -> Set CfgProduction) -> Set PqQuad -> Set CfgProduction
 convertClass rule = foldl (\a quad -> a `union` psets quad) Set.empty where
@@ -159,7 +154,8 @@ m precg =
     -- if w then Just (NonTerminal "!start", prods) else Nothing where
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
-    (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses, unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses) where
+    (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses,
+                   unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses) where
         isPre :: Set UniquenessPair -> Bool
         isPre clas =
             case Set.elemAt 0 clas of
@@ -171,7 +167,8 @@ m precg =
                 _ -> False
     prods = pqboundClasses pre post upairClasses |> convertClasses pre post
     w = positive && noInitWhole && noInitSubseq && classesPrecDisjoint where
-        positive = all fn precg where
+        positive =
+            all fn precg where
             fn (Closed _) = True
             fn x = prec x > 0
         noInitSubseq =
@@ -186,7 +183,7 @@ m precg =
                         notPrefixedBy :: Eq a => [a] -> [a] -> Bool
                         notPrefixedBy (x:xs) [] = False
                         notPrefixedBy [] _ = True
-                        notPrefixedBy (x:xs) (y:ys) = not (x == y && notPrefixedBy xs ys)
+                        notPrefixedBy (x:xs) (y:ys) = x /= y || notPrefixedBy xs ys
         classesPrecDisjoint =
             allDisjoint precGroups where
                 allDisjoint :: Ord a => [Set a] -> Bool

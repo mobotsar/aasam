@@ -5,12 +5,14 @@ import Test.Framework.Providers.HUnit (hUnitTestToTests)
 import Test.HUnit (Test(..), Assertable(assert), Assertion, assertEqual)
 import Test.Framework.Providers.API (Test(Test))
 import qualified Data.Set as Set
-import Grammars
-import Util
 import Aasam
+    ( ContextFree,
+      NonTerminal(NonTerminal),
+      Precedence,
+      PrecedenceProduction(Closed, Infixl, Postfix),
+      m )
 import qualified Data.List as List
--- import Data.List.NonEmpty (NonEmpty, nonEmpty)
-import Data.List.NonEmpty
+import Data.List.NonEmpty ( fromList )
 
 
 testMap :: Eq a => Show a => [(String, a, a)] -> [Test.HUnit.Test]
@@ -45,5 +47,3 @@ pg = Set.fromList [
 d :: Maybe ContextFree -> ContextFree
 d (Just x) = x
 d Nothing = (NonTerminal "String", Set.empty)
-
-unwrap = unwrapOr (error "fail")
