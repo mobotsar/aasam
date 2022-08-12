@@ -5,8 +5,15 @@ import qualified Data.Set as Set
 import Data.List (groupBy)
 import qualified Data.List.NonEmpty as DLNe
 import Grammars
-import Util
-import Data.List.NonEmpty (NonEmpty)
+    ( CfgProduction,
+      CfgString,
+      ContextFree,
+      NonTerminal(..),
+      Precedence,
+      PrecedenceProduction(..),
+      Terminal(..) )
+import Util ( (>.), unwrapOr, (|>) )
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Function (on)
 
 import Data.Data (toConstr)
@@ -193,7 +200,7 @@ m precg =
         aes = Set.filter isAtomic precg
             |> Set.map (\(Closed words) -> (NonTerminal "AE", DLNe.toList words |> map (Left . Terminal))) where
                 isAtomic :: PrecedenceProduction -> Bool
-                isAtomic (Closed (_ DLNe.:| [])) = True
+                isAtomic (Closed (_ :| [])) = True
                 isAtomic _ = False
     assignStart :: Set CfgProduction -> Set CfgProduction
     assignStart = Set.map $ bimap lhsMap rhsMap where
