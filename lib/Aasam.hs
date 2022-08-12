@@ -5,7 +5,14 @@ import qualified Data.Set as Set
 import Data.List (groupBy)
 import qualified Data.List.NonEmpty as DLNe
 import Grammars
-import Util
+    ( Precedence,
+      PrecedenceProduction(..),
+      ContextFree,
+      CfgProduction,
+      CfgString,
+      Terminal(..),
+      NonTerminal(..) )
+import Util ( (>.), (|>), unwrapOr )
 import Data.List.NonEmpty (NonEmpty)
 import Data.Function (on)
 
@@ -58,7 +65,7 @@ type PqQuad = (Int, Int, PrecedenceProduction, Precedence)
 pqboundUPair :: Set UniquenessPair -> Set UniquenessPair -> UniquenessPair -> PqQuad
 pqboundUPair pre post (r, s) = (greater pre $ prec r, greater post $ prec r, r, s) where
     greater :: Set UniquenessPair -> Int -> Int
-    greater upairs n = Set.size $ Set.filter (\(r, _) -> prec r > n) upairs
+    greater upairs n = Set.size $ Set.filter ((n <) . prec . fst) upairs
 
 pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set UniquenessPair) -> Set (Set PqQuad)
 pqboundClasses pre post = Set.map (Set.map (pqboundUPair pre post))
@@ -118,7 +125,7 @@ inrrule p q (_, _, r, s) =
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
 closedrule pres posts p q (_, _, r, s) =
-    ae `insert` isets `union` jsets where
+    insert ae isets `union` jsets where
         ae :: CfgProduction
         ae = (nt 0 p q, [Right (NonTerminal "AE")])
         isets :: Set CfgProduction
@@ -175,11 +182,11 @@ m precg =
         noInitWhole =
             all fx precg where
                 fx x = all fy precg where
-                    fy y = not (getWords x `prefixedBy` getWords y) where
-                        prefixedBy :: Eq a => [a] -> [a] -> Bool
-                        prefixedBy (x:xs) [] = True
-                        prefixedBy [] _ = False
-                        prefixedBy (x:xs) (y:ys) = x == y && prefixedBy xs ys
+                    fy y = getWords x `notPrefixedBy` getWords y where
+                        notPrefixedBy :: Eq a => [a] -> [a] -> Bool
+                        notPrefixedBy (x:xs) [] = False
+                        notPrefixedBy [] _ = True
+                        notPrefixedBy (x:xs) (y:ys) = not (x == y && notPrefixedBy xs ys)
         classesPrecDisjoint =
             allDisjoint precGroups where
                 allDisjoint :: Ord a => [Set a] -> Bool
