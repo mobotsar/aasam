@@ -245,7 +245,7 @@ m precg =
                 then Nothing
                 else Just errstr
           where
-            errstr = "The set of precedences must be the set of integers between 1 and greatest precedence, inclusive." ++ show lowestPrecedence ++ " " ++ show highestPrecedence ++ show precedences
+            errstr = "The set of precedences must be either empty or the set of integers between 1 and greatest precedence, inclusive."
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (findBy isPre, findBy isPost)
