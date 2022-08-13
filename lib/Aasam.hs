@@ -173,11 +173,14 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
                 (_, _, Prefix _ _, _) -> prerule
                 (_, _, Postfix _ _, _) -> postrule
                 (_, _, Closed _, _) -> closedrule pres posts
-
+-- |The type of errors. Contains a list of strings, each of which describes an error of the input grammar.
 newtype AasamError =
     AasamError [String]
     deriving (Show, Eq, Ord)
 
+-- |Takes a distfix precedence grammar. If there is an error, produces an 'AasamError', else produces a corresponding unambiguous context-free grammar.
+--
+-- All possible errors are enumerated in the documentation for 'Precedence'.
 m :: Precedence -> Either ContextFree AasamError
 m precg =
     if null errors
