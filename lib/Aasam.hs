@@ -1,4 +1,4 @@
-module Aasam (m, module Grammars) where
+module Aasam (m, module Grammars, AasamError (..)) where
 
 import Data.Set (Set, union, insert)
 import qualified Data.Set as Set
@@ -102,7 +102,6 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
 -- The AE production on `closedrule` must go to a non-terminal.
 -- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
 --   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
--- rules: 
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
 prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
@@ -148,9 +147,16 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
             (_, _, Postfix _ _, _) -> postrule
             (_, _, Closed _, _) -> closedrule pres posts
 
-m :: Precedence -> Maybe ContextFree
+data AasamError =
+      Positivity
+    | InitSubsequent
+    | InitWhole
+    | InterClassPrecedence
+    deriving (Show, Eq, Ord)
+
+m :: Precedence -> Either ContextFree AasamError
 m precg =
-    if w then Just (NonTerminal "!start", addAes (assignStart prods)) else Nothing where
+    if w then Left (NonTerminal "!start", addAes (assignStart prods)) else Right Positivity where
     -- if w then Just (NonTerminal "!start", prods) else Nothing where
     classes = makeClasses precg
     upairClasses = pairifyClasses classes

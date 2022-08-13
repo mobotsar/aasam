@@ -6,11 +6,6 @@ import Test.HUnit (Test(..), Assertable(assert), Assertion, assertEqual)
 import Test.Framework.Providers.API (Test(Test))
 import qualified Data.Set as Set
 import Aasam
-    ( ContextFree,
-      NonTerminal(NonTerminal),
-      Precedence,
-      PrecedenceProduction(Closed, Infixl, Postfix),
-      m )
 import qualified Data.List as List
 import Data.List.NonEmpty ( fromList )
 
@@ -30,7 +25,7 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
-labeledTests = testMap [("okay", Nothing, m pg)]
+labeledTests = testMap [("okay", Right Positivity, m pg)]
 -- labeledTests = testMap [("okay", 20, m pg |> unwrapOr (nt 0 0 0, Set.empty) |> snd |> List.length)]
 
 
