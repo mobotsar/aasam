@@ -224,9 +224,9 @@ m precg =
                 fy y = getWords x `notPrefixedBy` getWords y || x == y
                   where
                     notPrefixedBy :: Eq a => [a] -> [a] -> Bool
+                    notPrefixedBy [] [] = False
                     notPrefixedBy (_:_) [] = False
                     notPrefixedBy [] (_:_) = True
-                    notPrefixedBy [] [] = False
                     notPrefixedBy (x:xs) (y:ys) = x /= y || notPrefixedBy xs ys
             errstr = "No initial sequence of words may also be the whole sequence of another production."
         classesPrecDisjoint =
