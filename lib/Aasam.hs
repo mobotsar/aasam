@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Aasam (m, module Grammars, AasamError (..)) where
 
 import Data.Set (Set, union, insert)
@@ -152,17 +153,13 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
             (_, _, Postfix _ _, _) -> postrule
             (_, _, Closed _, _) -> closedrule pres posts
 
-data AasamError =
-      Positivity
-    | InitSubsequent
-    | InitWhole
-    | InterClassPrecedence
+newtype AasamError = AasamError String
     deriving (Show, Eq, Ord)
 
 m :: Precedence -> Either ContextFree AasamError
 m precg =
-    if w then Left (NonTerminal "!start", addCes (assignStart prods)) else Right Positivity where
-    -- if w then Just (NonTerminal "!start", prods) else Nothing where
+    --                                                                     TODO: vv Fix that.
+    if w then Left (NonTerminal "!start", addCes (assignStart prods)) else Right (AasamError "") where
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses,
@@ -177,7 +174,7 @@ m precg =
                 (Postfix _ _, _) -> True
                 _ -> False
     prods = pqboundClasses pre post upairClasses |> convertClasses pre post
-    w = positive && noInitWhole && noInitSubseq && classesPrecDisjoint where
+    w = positive && noInitWhole && noInitSubseq && classesPrecDisjoint && precContinue where
         positive =
             all fn precg where
             fn (Closed _) = True
@@ -201,7 +198,9 @@ m precg =
                 allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs
                 allDisjoint [] = True
                 precGroups :: [Set Int]
-                precGroups = List.map (foldl (\a e -> insert (prec e) a) Set.empty) (Set.toList classes)
+                precGroups = List.map (foldl (\a e -> prec e `insert` a) Set.empty) (Set.toList classes)
+        precContinue =
+            precedences == Set.fromList [lowestPrecedence .. highestPrecedence]
     addCes :: Set CfgProduction -> Set CfgProduction
     addCes = union ces where
         ces :: Set CfgProduction
@@ -218,4 +217,5 @@ m precg =
             submap :: Either Terminal NonTerminal -> Either Terminal NonTerminal
             submap (Right x) = Right $ lhsMap x
             submap y = y
-        highestPrecedence = foldl (\a e -> if prec e > a then prec e else a) 0 precg
+    (highestPrecedence, lowestPrecedence, precedences) =
+        foldl (\(ha, la, pa) e -> (max (prec e) ha, min (prec e) la, prec e `insert` pa)) (0, 0, Set.empty) precg

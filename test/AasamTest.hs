@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Evaluate" #-}
 module Main (main) where
 
 import Test.Framework (defaultMain)
@@ -25,8 +27,9 @@ empt = []
 
 
 labeledTests :: [Test.HUnit.Test]
-labeledTests = testMap [("okay", Just 20, Just (Set.size (snd (un (m pg0)))))]
--- labeledTests = testMap [("okay", Nothing, Just (m pg0))]
+labeledTests = []
+    ++ testMap [("okay", Just 20, Just (Set.size (snd (un (m pg0)))))]
+    ++ testMap [("under", Nothing, Just (m pg0))]
 
 
 pg0 :: Precedence
@@ -42,10 +45,13 @@ un :: Either a b -> a
 un (Left x) = x
 un _ = error "fail"
 
+pg1 :: Set.Set PrecedenceProduction
 pg1 =
     Set.fromList [
-          Closed (fromList ["x"])
-        , Closed (fromList ["OPEN", "CLOSE"])
+          Infixr 2 (fromList ["="])
+        , Prefix 1 (fromList ["λ", "."])
+        , Closed (fromList ["x"])
+        , Closed (fromList ["(", "$", ")"])
     ]
 
 
