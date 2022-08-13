@@ -50,8 +50,8 @@ un _ = error "fail"
 pg1 :: Set.Set PrecedenceProduction
 pg1 =
     Set.fromList
-        [ Infixr 3 (fromList ["="])
-        , Prefix 2 (fromList ["λ", "."])
+        [ Infixr 2 (fromList ["="])
+        , Prefix 1 (fromList ["λ", "."])
         , Closed (fromList ["x"])
         , Closed (fromList ["(", "$", ")"])
         ]

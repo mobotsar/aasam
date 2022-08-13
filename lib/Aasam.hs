@@ -34,7 +34,7 @@ doGeneric (Infixr prec words) f = f prec words
 doGeneric (Closed words) f = f 0 words
 
 getWords :: PrecedenceProduction -> [String]
-getWords = flip doGeneric (\_ y -> DLNe.toList y)
+getWords = flip doGeneric (const DLNe.toList)
 
 prec :: PrecedenceProduction -> Int
 prec = flip doGeneric const
@@ -142,14 +142,14 @@ closedrule pres posts p q (_, _, r, s) = insert ae isets `union` jsets
     ae :: CfgProduction
     ae = (nt 0 p q, [Right (NonTerminal "CE")])
     isets :: Set CfgProduction
-    isets = foldl (\a e -> a `union` ido e) Set.empty (zip (Set.toList pres) [1 .. p])
+    isets = foldl (flip (union . ido)) Set.empty (zip (Set.toList pres) [1 .. p])
       where
         ido :: (UniquenessPair, Int) -> Set CfgProduction
         ido ((r, s), i) =
             Set.singleton
                 (nt 0 p q, intersperseStart (getWords r |> DLNe.fromList) ++ [Right (nt (prec r) (p - i) 0)])
     jsets :: Set CfgProduction
-    jsets = foldl (\a e -> a `union` jdo e) Set.empty (zip (Set.toList posts) [1 .. q])
+    jsets = foldl (flip (union . jdo)) Set.empty (zip (Set.toList posts) [1 .. q])
       where
         jdo :: (UniquenessPair, Int) -> Set CfgProduction
         jdo ((r, s), j) =
@@ -157,11 +157,11 @@ closedrule pres posts p q (_, _, r, s) = insert ae isets `union` jsets
                 (nt 0 p q, Right (nt (prec r) 0 (q - j)) : intersperseStart (getWords r |> DLNe.fromList))
 
 convertClass :: (Int -> Int -> PqQuad -> Set CfgProduction) -> Set PqQuad -> Set CfgProduction
-convertClass rule = foldl (\a quad -> a `union` psets quad) Set.empty
+convertClass rule = foldl (flip (union . psets)) Set.empty
   where
-    psets (pbound, qbound, r, s) = foldl (\a p -> a `union` qsets p) Set.empty [0 .. pbound]
+    psets (pbound, qbound, r, s) = foldl (flip (union . qsets)) Set.empty [0 .. pbound]
       where
-        qsets p = foldl (\a q -> a `union` rule p q (pbound, qbound, r, s)) Set.empty [0 .. qbound]
+        qsets p = foldl ((. flip (rule p) (pbound, qbound, r, s)) . union) Set.empty [0 .. qbound]
 
 convertClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set PqQuad) -> Set CfgProduction
 convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.empty
@@ -184,7 +184,7 @@ newtype AasamError =
 m :: Precedence -> Either ContextFree AasamError
 m precg =
     if null errors
-        then Left (NonTerminal "!start", addCes (assignStart prods))
+        then Left (nt highestPrecedence 0 0, addCes (assignStart prods))
         else Right (AasamError errors)
   where
     errors :: [String]
@@ -238,14 +238,14 @@ m precg =
             allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs
             allDisjoint [] = True
             precGroups :: [Set Int]
-            precGroups = List.map (foldl (\a e -> prec e `insert` a) Set.empty) (Set.toList classes)
+            precGroups = List.map (foldl (flip (insert . prec)) Set.empty) (Set.toList classes)
             errstr = "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
         precContinue =
             if precedences == Set.fromList [lowestPrecedence .. highestPrecedence]
                 then Nothing
                 else Just errstr
           where
-            errstr = "The set of precedences must equal the set of integers between 1 and greatest precedence, inclusive."
+            errstr = "The set of precedences must be the set of integers between 1 and greatest precedence, inclusive."
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) =
@@ -278,8 +278,8 @@ m precg =
       where
         lhsMap :: NonTerminal -> NonTerminal
         lhsMap lhs =
-            if lhs == nt highestPrecedence 0 0
-                then NonTerminal "!start"
+            if lhs == NonTerminal "!start"
+                then nt highestPrecedence 0 0
                 else lhs
         rhsMap = map submap
           where
