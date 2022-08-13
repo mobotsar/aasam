@@ -153,13 +153,50 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
             (_, _, Postfix _ _, _) -> postrule
             (_, _, Closed _, _) -> closedrule pres posts
 
-newtype AasamError = AasamError String
+newtype AasamError = AasamError [String]
     deriving (Show, Eq, Ord)
 
 m :: Precedence -> Either ContextFree AasamError
 m precg =
-    --                                                                     TODO: vv Fix that.
-    if w then Left (NonTerminal "!start", addCes (assignStart prods)) else Right (AasamError "") where
+    if null errors then Left (NonTerminal "!start", addCes (assignStart prods)) else Right (AasamError errors) where
+    errors :: [String]
+    errors = foldl fn [] [positive, noInitSubseq, noInitWhole, classesPrecDisjoint, precContinue] where
+        fn :: [String] -> Maybe String -> [String]
+        fn a e = case e of
+            Nothing -> a
+            Just err -> err : a
+        positive =
+            if all fn precg then Nothing else Just errstr where
+                fn (Closed _) = True
+                fn x = prec x > 0
+                errstr = "All precedences must be positive integers."
+        noInitSubseq =
+            if Set.disjoint initials subsequents then Nothing else Just errstr where
+                (initials, subsequents) = foldl fn (Set.empty, Set.empty) precg where
+                    fn (i, s) e = (insert (head words) i, (tail words |> Set.fromList) `union` s) where
+                        words = getWords e
+                errstr = "No initial word may also be a subsequent word of another production."
+        noInitWhole =
+            if all fx precg then Nothing else Just errstr where
+                fx x = all fy precg where
+                    fy y = getWords x `notPrefixedBy` getWords y || x == y where
+                        notPrefixedBy :: Eq a => [a] -> [a] -> Bool
+                        notPrefixedBy (_:_) [] = False
+                        notPrefixedBy [] (_:_) = True
+                        notPrefixedBy [] [] = False
+                        notPrefixedBy (x:xs) (y:ys) = x /= y || notPrefixedBy xs ys
+                errstr = "No initial sequence of words may also be the whole sequence of another production."
+        classesPrecDisjoint =
+            if allDisjoint precGroups then Nothing else Just errstr where
+                allDisjoint :: Ord a => [Set a] -> Bool
+                allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs
+                allDisjoint [] = True
+                precGroups :: [Set Int]
+                precGroups = List.map (foldl (\a e -> prec e `insert` a) Set.empty) (Set.toList classes)
+                errstr = "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
+        precContinue =
+            if precedences == Set.fromList [lowestPrecedence .. highestPrecedence] then Nothing else Just errstr where
+                errstr = "The set of precedences must equal the set of integers between the greatest and least precedences, inclusive."
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses,
@@ -174,33 +211,6 @@ m precg =
                 (Postfix _ _, _) -> True
                 _ -> False
     prods = pqboundClasses pre post upairClasses |> convertClasses pre post
-    w = positive && noInitWhole && noInitSubseq && classesPrecDisjoint && precContinue where
-        positive =
-            all fn precg where
-            fn (Closed _) = True
-            fn x = prec x > 0
-        noInitSubseq =
-            Set.disjoint initials subsequents where
-            (initials, subsequents) = foldl fn (Set.empty, Set.empty) precg where
-                fn (i, s) e = (insert (head words) i, (tail words |> Set.fromList) `union` s) where
-                    words = getWords e
-        noInitWhole =
-            all fx precg where
-                fx x = all fy precg where
-                    fy y = getWords x `notPrefixedBy` getWords y where
-                        notPrefixedBy :: Eq a => [a] -> [a] -> Bool
-                        notPrefixedBy (x:xs) [] = False
-                        notPrefixedBy [] _ = True
-                        notPrefixedBy (x:xs) (y:ys) = x /= y || notPrefixedBy xs ys
-        classesPrecDisjoint =
-            allDisjoint precGroups where
-                allDisjoint :: Ord a => [Set a] -> Bool
-                allDisjoint (x:xs) = all (Set.disjoint x) xs && allDisjoint xs
-                allDisjoint [] = True
-                precGroups :: [Set Int]
-                precGroups = List.map (foldl (\a e -> prec e `insert` a) Set.empty) (Set.toList classes)
-        precContinue =
-            precedences == Set.fromList [lowestPrecedence .. highestPrecedence]
     addCes :: Set CfgProduction -> Set CfgProduction
     addCes = union ces where
         ces :: Set CfgProduction
