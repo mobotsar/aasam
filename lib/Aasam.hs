@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 module Aasam (m, module Grammars, AasamError (..)) where
 
 import Data.Set (Set, union, insert)
@@ -196,7 +195,7 @@ m precg =
                 errstr = "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
         precContinue =
             if precedences == Set.fromList [lowestPrecedence .. highestPrecedence] then Nothing else Just errstr where
-                errstr = "The set of precedences must equal the set of integers between the greatest and least precedences, inclusive."
+                errstr = "The set of precedences must equal the set of integers between 1 and greatest precedence, inclusive."
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses,

@@ -29,15 +29,15 @@ empt = []
 labeledTests :: [Test.HUnit.Test]
 labeledTests = []
     -- ++ testMap [("okay", Just 20, Just (Set.size (snd (un (m pg0)))))]
-    ++ testMap [("under", Nothing, Just (m pg0))]
+    ++ testMap [("under", Nothing, Just (m pg1))]
 
 
 pg0 :: Precedence
 pg0 = Set.fromList [
           Postfix 4 (fromList ["?"])
-        , Infixl 3 (fromList ["+"])
-        , Infixl 1 (fromList ["+"])
-        , Postfix 2 (fromList ["!"])
+        , Infixl 4 (fromList ["+"])
+        , Infixl 0 (fromList ["+"])
+        , Postfix 2 (fromList ["!", "?"])
         , Closed (fromList ["int"])
         ]
 
@@ -48,8 +48,8 @@ un _ = error "fail"
 pg1 :: Set.Set PrecedenceProduction
 pg1 =
     Set.fromList [
-          Infixr 2 (fromList ["="])
-        , Prefix 1 (fromList ["λ", "."])
+          Infixr 3 (fromList ["="])
+        , Prefix 2 (fromList ["λ", "."])
         , Closed (fromList ["x"])
         , Closed (fromList ["(", "$", ")"])
     ]
