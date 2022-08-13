@@ -31,7 +31,7 @@ labeledTests =
     []
     -- ++ testMap [("okay", Just 20, Just (Set.size (snd (un (m pg0)))))]
      ++
-    testMap [("under", Nothing, Just (m pg1))]
+    testMap [("under", Nothing, Just (m pg2))]
 
 pg0 :: Precedence
 pg0 =
@@ -55,6 +55,9 @@ pg1 =
         , Closed (fromList ["x"])
         , Closed (fromList ["(", "$", ")"])
         ]
+
+pg2 :: Set.Set PrecedenceProduction 
+pg2 = Set.empty
 
 d :: Maybe ContextFree -> ContextFree
 d (Just x) = x

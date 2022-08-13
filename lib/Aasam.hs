@@ -245,14 +245,11 @@ m precg =
                 then Nothing
                 else Just errstr
           where
-            errstr = "The set of precedences must be the set of integers between 1 and greatest precedence, inclusive."
+            errstr = "The set of precedences must be the set of integers between 1 and greatest precedence, inclusive." ++ show lowestPrecedence ++ " " ++ show highestPrecedence ++ show precedences
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
-    (pre, post) =
-        ( unwrapOr Set.empty $ Data.Foldable.find isPre upairClasses
-        , unwrapOr Set.empty $ Data.Foldable.find isPost upairClasses)
+    (pre, post) = (findBy isPre, findBy isPost)
       where
-        isPre :: Set UniquenessPair -> Bool
         isPre clas =
             case Set.elemAt 0 clas of
                 (Prefix _ _, _) -> True
@@ -261,6 +258,7 @@ m precg =
             case Set.elemAt 0 clas of
                 (Postfix _ _, _) -> True
                 _ -> False
+        findBy f = unwrapOr Set.empty $ Data.Foldable.find f upairClasses
     prods = pqboundClasses pre post upairClasses |> convertClasses pre post
     addCes :: Set CfgProduction -> Set CfgProduction
     addCes = union ces
@@ -289,5 +287,5 @@ m precg =
     (highestPrecedence, lowestPrecedence, precedences) =
         foldl
             (\(ha, la, pa) e -> (max (prec e) ha, min (prec e) la, prec e `insert` pa))
-            (0, 0, Set.empty)
+            (0, 0, Set.singleton 0)
             precg
