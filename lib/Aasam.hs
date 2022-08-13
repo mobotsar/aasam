@@ -99,29 +99,34 @@ fill s cfgprods = Set.union withTerminals withoutTerminals where
                             kansas :: CfgString -> NonEmpty String -> CfgString
                             kansas str words = List.head str : intersperseStart words ++ [List.last str]
 
--- The AE production on `closedrule` must go to a non-terminal.
+-- The CE production on `closedrule` must go to a non-terminal.
 -- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
 --   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
-prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
+prerule p q (_, _, r, s) =
+    fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
 postrule :: Int -> Int -> PqQuad -> Set CfgProduction
-postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
+postrule p q (_, _, r, s) =
+    fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) p (q + 1))])
 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
+inlrule p q (_, _, r, s) =
+    fill s $ Set.fromList [a, b] where
     a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)]) -- The "evil" thing is a shortcut, basically. Just make r not in s.
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
-inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b] where
+inrrule p q (_, _, r, s) =
+    fill s $ Set.fromList [a, b] where
     a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
-closedrule pres posts p q (_, _, r, s) = insert ae isets `union` jsets where
+closedrule pres posts p q (_, _, r, s) =
+    insert ae isets `union` jsets where
     ae :: CfgProduction
-    ae = (nt 0 p q, [Right (NonTerminal "AE")])
+    ae = (nt 0 p q, [Right (NonTerminal "CE")])
     isets :: Set CfgProduction
     isets = foldl (\a e -> a `union` ido e) Set.empty (zip (Set.toList pres) [1..p]) where
         ido :: (UniquenessPair, Int) -> Set CfgProduction
@@ -156,7 +161,7 @@ data AasamError =
 
 m :: Precedence -> Either ContextFree AasamError
 m precg =
-    if w then Left (NonTerminal "!start", addAes (assignStart prods)) else Right Positivity where
+    if w then Left (NonTerminal "!start", addCes (assignStart prods)) else Right Positivity where
     -- if w then Just (NonTerminal "!start", prods) else Nothing where
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
@@ -197,14 +202,14 @@ m precg =
                 allDisjoint [] = True
                 precGroups :: [Set Int]
                 precGroups = List.map (foldl (\a e -> insert (prec e) a) Set.empty) (Set.toList classes)
-    addAes :: Set CfgProduction -> Set CfgProduction
-    addAes = union aes where
-        aes :: Set CfgProduction
-        aes = Set.filter isAtomic precg
-            |> Set.map (\(Closed words) -> (NonTerminal "AE", DLNe.toList words |> map (Left . Terminal))) where
-                isAtomic :: PrecedenceProduction -> Bool
-                isAtomic (Closed (_ :| [])) = True
-                isAtomic _ = False
+    addCes :: Set CfgProduction -> Set CfgProduction
+    addCes = union ces where
+        ces :: Set CfgProduction
+        ces = Set.filter isClosed precg
+            |> Set.map (\(Closed words) -> (NonTerminal "CE", intersperseStart words)) where
+                isClosed :: PrecedenceProduction -> Bool
+                isClosed (Closed _) = True
+                isClosed _ = False
     assignStart :: Set CfgProduction -> Set CfgProduction
     assignStart = Set.map $ bimap lhsMap rhsMap where
         lhsMap :: NonTerminal -> NonTerminal
