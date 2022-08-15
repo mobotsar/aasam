@@ -21,7 +21,7 @@ import Grammars
     )
 import Util ((>.), (|>), unwrapOr)
 
-import Data.Bifunctor (Bifunctor(bimap))
+import Data.Bifunctor (Bifunctor(bimap, second))
 import Data.Data (toConstr)
 import qualified Data.Foldable
 import qualified Data.List as List
@@ -98,26 +98,23 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
         fill' s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.fromList
           where
             reset :: PrecedenceProduction -> [CfgProduction] -> [CfgProduction]
-            reset pp = map fn
+            reset pp = map (second re)
               where
-                fn :: CfgProduction -> CfgProduction
-                fn (x, rhs) = (x, re rhs)
+                re :: CfgString -> CfgString
+                re str =
+                    case pp of
+                        Infixl prec words -> kansas str words
+                        Infixr prec words -> kansas str words
+                        _ ->
+                            error
+                                "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals, or a Closed production."
                   where
-                    re :: CfgString -> CfgString
-                    re str =
-                        case pp of
-                            Infixl prec words -> kansas str words
-                            Infixr prec words -> kansas str words
-                            _ ->
-                                error
-                                    "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals, or a Closed production."
-                      where
-                        kansas :: CfgString -> NonEmpty String -> CfgString
-                        kansas str words = List.head str : intersperseStart words ++ [List.last str]
+                    kansas :: CfgString -> NonEmpty String -> CfgString
+                    kansas str words = List.head str : intersperseStart words ++ [List.last str]
 
 -- The CE production on `closedrule` must go to a non-terminal.
 -- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
---   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug. Fix it by making the rules do what the paper says directly.
+--   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug.
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
 prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
@@ -176,11 +173,14 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
                 (_, _, Prefix _ _, _) -> prerule
                 (_, _, Postfix _ _, _) -> postrule
                 (_, _, Closed _, _) -> closedrule pres posts
-
+-- |The type of errors. Contains a list of strings, each of which describes an error of the input grammar.
 newtype AasamError =
     AasamError [String]
     deriving (Show, Eq, Ord)
 
+-- |Takes a distfix precedence grammar. If there is an error, produces an 'AasamError', else produces a corresponding unambiguous context-free grammar.
+--
+-- All possible errors are enumerated in the documentation for 'Precedence'.
 m :: Precedence -> Either ContextFree AasamError
 m precg =
     if null errors
