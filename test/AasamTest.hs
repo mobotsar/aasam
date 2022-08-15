@@ -57,7 +57,7 @@ pg1 =
         ]
 
 pg2 :: Set.Set PrecedenceProduction 
-pg2 = Set.empty
+pg2 = Set.fromList [Closed (fromList [""])]
 
 d :: Maybe ContextFree -> ContextFree
 d (Just x) = x

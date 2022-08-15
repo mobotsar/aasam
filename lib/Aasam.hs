@@ -187,7 +187,6 @@ m precg =
         then Left (nt highestPrecedence 0 0, addCes (assignStart prods))
         else Right (AasamError errors)
   where
-    errors :: [String]
     errors = foldl fn [] [positive, noInitSubseq, noInitWhole, classesPrecDisjoint, precContinue]
       where
         fn :: [String] -> Maybe String -> [String]
