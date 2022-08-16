@@ -27,9 +27,9 @@ type ContextFree = (NonTerminal, Set CfgProduction)
 --
 -- Int parameters are precedences.
 --
--- NonEmpty String parameters are lists of non-terminal symbols expressed as strings.
---  The particular data constructor used implies the interspersal pattern of non-terminals in the terminal list when the production is interpreted.
---  For example,
+-- NonEmpty String parameters are lists of terminal symbols expressed as strings.
+-- A particular data constructor implies a corresponding interspersal pattern of non-terminals in the terminal list when the production is interpreted.
+-- For example,
 --
 -- > Infixl 1 (fromList ["?", ":"])
 -- corresponds to the left-associative production, E -> E ? E : E.
