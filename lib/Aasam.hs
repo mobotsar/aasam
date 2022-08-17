@@ -184,7 +184,7 @@ newtype AasamError =
 m :: Precedence -> Either ContextFree AasamError
 m precg =
     if null errors
-        then Left (nt highestPrecedence 0 0, addCes (assignStart prods))
+        then Left (nt highestPrecedence 0 0, assignStart (addCes prods))
         else Right (AasamError errors)
   where
     errors = foldl fn [] [positive, noInitSubseq, noInitWhole, classesPrecDisjoint, precContinue]

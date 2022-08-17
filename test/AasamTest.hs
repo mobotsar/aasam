@@ -57,8 +57,8 @@ pg1 =
         ]
 
 pg2 :: Set.Set PrecedenceProduction 
-pg2 = Set.fromList [Infixl 1 (fromList ["+"]),
-                    Infixl 1 (fromList ["*"]),
+pg2 = Set.fromList [Prefix 2 (fromList ["if", " ", "then"]),
+                    Prefix 1 (fromList ["if", "then", "else"]),
                     Closed (fromList ["x"])]
 
 d :: Maybe ContextFree -> ContextFree
