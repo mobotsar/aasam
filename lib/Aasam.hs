@@ -92,12 +92,12 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
       where
         hasTerminal :: CfgProduction -> Bool
         hasTerminal (_, words) = List.any isTerminal words
-    isTerminal :: Either Terminal NonTerminal -> Bool
-    isTerminal (Right (NonTerminal _)) = False
-    isTerminal (Left (Terminal _)) = True
+        isTerminal :: Either Terminal NonTerminal -> Bool
+        isTerminal (Right (NonTerminal _)) = False
+        isTerminal (Left (Terminal _)) = True
     withTerminals = fill' s left
-        -- TODO: write a proper implementation of this composition that doesn't depend on List
       where
+        -- TODO: write a proper implementation of this composition that doesn't depend on List
         fill' :: Precedence -> Set CfgProduction -> Set CfgProduction
         fill' s = Set.toList >. repeat >. zipWith reset (Set.toList s) >. concat >. Set.fromList
           where
