@@ -1,9 +1,7 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
 {-# HLINT ignore "Evaluate" #-}
-module Main
-    ( main
-    ) where
+module Main (main) where
 
 import Aasam
 import qualified Data.List as List

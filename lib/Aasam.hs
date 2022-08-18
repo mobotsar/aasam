@@ -12,7 +12,7 @@ import Data.Set (Set, insert, union)
 import qualified Data.Set as Set
 import Grammars
     ( CfgProduction
-    , CfgText
+    , CfgString
     , ContextFree
     , NonTerminal(..)
     , Precedence
@@ -81,8 +81,9 @@ pqboundUPair pre post (r, s) = (greater pre $ prec r, greater post $ prec r, r, 
 pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set UniquenessPair) -> Set (Set PqQuad)
 pqboundClasses pre post = Set.map (Set.map (pqboundUPair pre post))
 
-intersperseStart :: NonEmpty Text -> CfgText
-intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right ((NonTerminal . Text.pack) "!start")) >. DLNe.toList
+intersperseStart :: NonEmpty Text -> CfgString
+intersperseStart =
+    DLNe.map (Left . Terminal) >. DLNe.intersperse (Right ((NonTerminal . Text.pack) "!start")) >. DLNe.toList
 
 fill :: Precedence -> Set CfgProduction -> Set CfgProduction
 fill s cfgprods = Set.union withTerminals withoutTerminals
@@ -103,7 +104,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
             reset :: PrecedenceProduction -> [CfgProduction] -> [CfgProduction]
             reset pp = map (second re)
               where
-                re :: CfgText -> CfgText
+                re :: CfgString -> CfgString
                 re str =
                     case pp of
                         Infixl prec words -> kansas str words
@@ -112,7 +113,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
                             error
                                 "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals, or a Closed production."
                   where
-                    kansas :: CfgText -> NonEmpty Text -> CfgText
+                    kansas :: CfgString -> NonEmpty Text -> CfgString
                     kansas str words = List.head str : intersperseStart words ++ [List.last str]
 
 -- The CE production on `closedrule` must go to a non-terminal.
@@ -127,19 +128,22 @@ postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b]
   where
-    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left ((Terminal . Text.pack) "evil"), Right (nt (prec r - 1) p 0)])
+    a =
+        ( nt (prec r) p q
+        , [Right (nt (prec r) 0 q), Left ((Terminal . Text.pack) "evil"), Right (nt (prec r - 1) p 0)])
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b]
   where
-    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left ((Terminal . Text.pack) "evil"), Right (nt (prec r) p 0)])
+    a =
+        ( nt (prec r) p q
+        , [Right (nt (prec r - 1) 0 q), Left ((Terminal . Text.pack) "evil"), Right (nt (prec r) p 0)])
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
 closedrule pres posts p q (_, _, r, s) = insert ae isets `union` jsets
   where
-    ae :: CfgProduction
     ae = (nt 0 p q, [Right ((NonTerminal . Text.pack) "CE")])
     isets :: Set CfgProduction
     isets = foldl (flip (union . ido)) Set.empty (zip (Set.toList pres) [1 .. p])
@@ -176,6 +180,7 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
                 (_, _, Prefix _ _, _) -> prerule
                 (_, _, Postfix _ _, _) -> postrule
                 (_, _, Closed _, _) -> closedrule pres posts
+
 -- |The type of errors. Contains a list of strings, each of which describes an error of the input grammar.
 newtype AasamError =
     AasamError [Text]
@@ -184,11 +189,11 @@ newtype AasamError =
 -- |Takes a distfix precedence grammar. If there is an error, produces an 'AasamError', else produces a corresponding unambiguous context-free grammar.
 --
 -- All possible errors are enumerated in the documentation for 'Precedence'.
-m :: Precedence -> Either ContextFree AasamError
+m :: Precedence -> Either AasamError ContextFree
 m precg =
     if null errors
-        then Left (nt highestPrecedence 0 0, assignStart (addCes prods))
-        else Right (AasamError errors)
+        then Right (nt highestPrecedence 0 0, assignStart (addCes prods))
+        else Left (AasamError errors)
   where
     errors = foldl fn [] [positive, noInitSubseq, noInitWhole, classesPrecDisjoint, precContinue]
       where
@@ -230,7 +235,8 @@ m precg =
                     notPrefixedBy (_:_) [] = False
                     notPrefixedBy [] (_:_) = True
                     notPrefixedBy (x:xs) (y:ys) = x /= y || notPrefixedBy xs ys
-            errstr = Text.pack "No initial sequence of words may also be the whole sequence of another production."
+            errstr =
+                Text.pack "No initial sequence of words may also be the whole sequence of another production."
         classesPrecDisjoint =
             if allDisjoint precGroups
                 then Nothing
@@ -241,13 +247,17 @@ m precg =
             allDisjoint [] = True
             precGroups :: [Set Int]
             precGroups = List.map (foldl (flip (insert . prec)) Set.empty) (Set.toList classes)
-            errstr = Text.pack "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
+            errstr =
+                Text.pack
+                    "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
         precContinue =
             if precedences == Set.fromList [lowestPrecedence .. highestPrecedence]
                 then Nothing
                 else Just errstr
           where
-            errstr = Text.pack "The set of precedences must be either empty or the set of integers between 1 and greatest precedence, inclusive."
+            errstr =
+                Text.pack
+                    "The set of precedences must be either empty or the set of integers between 1 and greatest precedence, inclusive."
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (findBy isPre, findBy isPost)

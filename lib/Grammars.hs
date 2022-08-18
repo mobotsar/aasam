@@ -18,10 +18,10 @@ newtype Terminal =
     Terminal Text
     deriving (Eq, Ord, Show)
 
-type CfgText = [Either Terminal NonTerminal]
+type CfgString = [Either Terminal NonTerminal]
 
 -- |The type of a context-free production. The left and right items correspond respectively to the left and right hand sides of a production rule.
-type CfgProduction = (NonTerminal, CfgText)
+type CfgProduction = (NonTerminal, CfgString)
 
 -- |The type of a context-free grammar. On the left the starting non-terminal, and on the right is the set of productions in the grammar.
 type ContextFree = (NonTerminal, Set CfgProduction)
