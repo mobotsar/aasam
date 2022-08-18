@@ -12,7 +12,7 @@ import Data.Set (Set, insert, union)
 import qualified Data.Set as Set
 import Grammars
     ( CfgProduction
-    , CfgString
+    , CfgText
     , ContextFree
     , NonTerminal(..)
     , Precedence
@@ -26,21 +26,24 @@ import Data.Data (toConstr)
 import qualified Data.Foldable
 import qualified Data.List as List
 
-doGeneric :: PrecedenceProduction -> (Int -> NonEmpty String -> a) -> a
+import qualified Data.Text as Text
+import Data.Text (Text)
+
+doGeneric :: PrecedenceProduction -> (Int -> NonEmpty Text -> a) -> a
 doGeneric (Prefix prec words) f = f prec words
 doGeneric (Postfix prec words) f = f prec words
 doGeneric (Infixl prec words) f = f prec words
 doGeneric (Infixr prec words) f = f prec words
 doGeneric (Closed words) f = f 0 words
 
-getWords :: PrecedenceProduction -> [String]
+getWords :: PrecedenceProduction -> [Text]
 getWords = flip doGeneric (const DLNe.toList)
 
 prec :: PrecedenceProduction -> Int
 prec = flip doGeneric const
 
 nt :: Int -> Int -> Int -> NonTerminal
-nt prec p q = NonTerminal (show prec ++ show p ++ show q)
+nt prec p q = (NonTerminal . Text.pack) (show prec ++ show p ++ show q)
 
 -- TODO: write a proper implementation of this that doesn't depend on List
 groupSetBy :: Ord a => (a -> a -> Bool) -> Set a -> Set (Set a)
@@ -78,8 +81,8 @@ pqboundUPair pre post (r, s) = (greater pre $ prec r, greater post $ prec r, r, 
 pqboundClasses :: Set UniquenessPair -> Set UniquenessPair -> Set (Set UniquenessPair) -> Set (Set PqQuad)
 pqboundClasses pre post = Set.map (Set.map (pqboundUPair pre post))
 
-intersperseStart :: NonEmpty String -> CfgString
-intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right (NonTerminal "!start")) >. DLNe.toList
+intersperseStart :: NonEmpty Text -> CfgText
+intersperseStart = DLNe.map (Left . Terminal) >. DLNe.intersperse (Right ((NonTerminal . Text.pack) "!start")) >. DLNe.toList
 
 fill :: Precedence -> Set CfgProduction -> Set CfgProduction
 fill s cfgprods = Set.union withTerminals withoutTerminals
@@ -100,7 +103,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
             reset :: PrecedenceProduction -> [CfgProduction] -> [CfgProduction]
             reset pp = map (second re)
               where
-                re :: CfgString -> CfgString
+                re :: CfgText -> CfgText
                 re str =
                     case pp of
                         Infixl prec words -> kansas str words
@@ -109,7 +112,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
                             error
                                 "This is a bug in Aasam. Somehow, I got a CfgProduction that hasn't any terminals, or a Closed production."
                   where
-                    kansas :: CfgString -> NonEmpty String -> CfgString
+                    kansas :: CfgText -> NonEmpty Text -> CfgText
                     kansas str words = List.head str : intersperseStart words ++ [List.last str]
 
 -- The CE production on `closedrule` must go to a non-terminal.
@@ -124,20 +127,20 @@ postrule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt 
 inlrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inlrule p q (_, _, r, s) = fill s $ Set.fromList [a, b]
   where
-    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left (Terminal "evil"), Right (nt (prec r - 1) p 0)])
+    a = (nt (prec r) p q, [Right (nt (prec r) 0 q), Left ((Terminal . Text.pack) "evil"), Right (nt (prec r - 1) p 0)])
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 inrrule :: Int -> Int -> PqQuad -> Set CfgProduction
 inrrule p q (_, _, r, s) = fill s $ Set.fromList [a, b]
   where
-    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left (Terminal "evil"), Right (nt (prec r) p 0)])
+    a = (nt (prec r) p q, [Right (nt (prec r - 1) 0 q), Left ((Terminal . Text.pack) "evil"), Right (nt (prec r) p 0)])
     b = (nt (prec r) p q, [Right (nt (prec r - 1) p q)])
 
 closedrule :: Set UniquenessPair -> Set UniquenessPair -> Int -> Int -> PqQuad -> Set CfgProduction
 closedrule pres posts p q (_, _, r, s) = insert ae isets `union` jsets
   where
     ae :: CfgProduction
-    ae = (nt 0 p q, [Right (NonTerminal "CE")])
+    ae = (nt 0 p q, [Right ((NonTerminal . Text.pack) "CE")])
     isets :: Set CfgProduction
     isets = foldl (flip (union . ido)) Set.empty (zip (Set.toList pres) [1 .. p])
       where
@@ -175,7 +178,7 @@ convertClasses pres posts = Set.map convertClassBranching >. foldl union Set.emp
                 (_, _, Closed _, _) -> closedrule pres posts
 -- |The type of errors. Contains a list of strings, each of which describes an error of the input grammar.
 newtype AasamError =
-    AasamError [String]
+    AasamError [Text]
     deriving (Show, Eq, Ord)
 
 -- |Takes a distfix precedence grammar. If there is an error, produces an 'AasamError', else produces a corresponding unambiguous context-free grammar.
@@ -189,7 +192,7 @@ m precg =
   where
     errors = foldl fn [] [positive, noInitSubseq, noInitWhole, classesPrecDisjoint, precContinue]
       where
-        fn :: [String] -> Maybe String -> [String]
+        fn :: [Text] -> Maybe Text -> [Text]
         fn a e =
             case e of
                 Nothing -> a
@@ -201,7 +204,7 @@ m precg =
           where
             fn (Closed _) = True
             fn x = prec x > 0
-            errstr = "All precedences must be positive integers."
+            errstr = Text.pack "All precedences must be positive integers."
         noInitSubseq =
             if Set.disjoint initials subsequents
                 then Nothing
@@ -212,7 +215,7 @@ m precg =
                 fn (i, s) e = (insert (head words) i, (tail words |> Set.fromList) `union` s)
                   where
                     words = getWords e
-            errstr = "No initial word may also be a subsequent word of another production."
+            errstr = Text.pack "No initial word may also be a subsequent word of another production."
         noInitWhole =
             if all fx precg
                 then Nothing
@@ -227,7 +230,7 @@ m precg =
                     notPrefixedBy (_:_) [] = False
                     notPrefixedBy [] (_:_) = True
                     notPrefixedBy (x:xs) (y:ys) = x /= y || notPrefixedBy xs ys
-            errstr = "No initial sequence of words may also be the whole sequence of another production."
+            errstr = Text.pack "No initial sequence of words may also be the whole sequence of another production."
         classesPrecDisjoint =
             if allDisjoint precGroups
                 then Nothing
@@ -238,13 +241,13 @@ m precg =
             allDisjoint [] = True
             precGroups :: [Set Int]
             precGroups = List.map (foldl (flip (insert . prec)) Set.empty) (Set.toList classes)
-            errstr = "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
+            errstr = Text.pack "No precedence of a production of one fixity may also be the precedence of a production of another fixity."
         precContinue =
             if precedences == Set.fromList [lowestPrecedence .. highestPrecedence]
                 then Nothing
                 else Just errstr
           where
-            errstr = "The set of precedences must be either empty or the set of integers between 1 and greatest precedence, inclusive."
+            errstr = Text.pack "The set of precedences must be either empty or the set of integers between 1 and greatest precedence, inclusive."
     classes = makeClasses precg
     upairClasses = pairifyClasses classes
     (pre, post) = (findBy isPre, findBy isPost)
@@ -265,7 +268,7 @@ m precg =
         ces :: Set CfgProduction
         ces =
             Set.filter isClosed precg |>
-            Set.map (\(Closed words) -> (NonTerminal "CE", intersperseStart words))
+            Set.map (\(Closed words) -> ((NonTerminal . Text.pack) "CE", intersperseStart words))
           where
             isClosed :: PrecedenceProduction -> Bool
             isClosed (Closed _) = True
@@ -275,7 +278,7 @@ m precg =
       where
         lhsMap :: NonTerminal -> NonTerminal
         lhsMap lhs =
-            if lhs == NonTerminal "!start"
+            if lhs == (NonTerminal . Text.pack) "!start"
                 then nt highestPrecedence 0 0
                 else lhs
         rhsMap = map submap

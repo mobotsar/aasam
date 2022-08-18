@@ -7,18 +7,21 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Set (Set)
 import qualified Data.Set as Set
 
+import qualified Data.Text as Text
+import Data.Text (Text)
+
 newtype NonTerminal =
-    NonTerminal String
+    NonTerminal Text
     deriving (Eq, Ord, Show)
 
 newtype Terminal =
-    Terminal String
+    Terminal Text
     deriving (Eq, Ord, Show)
 
-type CfgString = [Either Terminal NonTerminal]
+type CfgText = [Either Terminal NonTerminal]
 
 -- |The type of a context-free production. The left and right items correspond respectively to the left and right hand sides of a production rule.
-type CfgProduction = (NonTerminal, CfgString)
+type CfgProduction = (NonTerminal, CfgText)
 
 -- |The type of a context-free grammar. On the left the starting non-terminal, and on the right is the set of productions in the grammar.
 type ContextFree = (NonTerminal, Set CfgProduction)
@@ -27,18 +30,18 @@ type ContextFree = (NonTerminal, Set CfgProduction)
 --
 -- Int parameters are precedences.
 --
--- NonEmpty String parameters are lists of terminal symbols expressed as strings.
+-- NonEmpty Text parameters are lists of terminal symbols expressed as strings.
 -- A particular data constructor implies a corresponding interspersal pattern of non-terminals in the terminal list when the production is interpreted.
 -- For example,
 --
 -- > Infixl 1 (fromList ["?", ":"])
 -- corresponds to the left-associative production, E -> E ? E : E.
 data PrecedenceProduction
-    = Prefix Int (NonEmpty String)
-    | Postfix Int (NonEmpty String)
-    | Infixl Int (NonEmpty String)
-    | Infixr Int (NonEmpty String)
-    | Closed (NonEmpty String)
+    = Prefix Int (NonEmpty Text)
+    | Postfix Int (NonEmpty Text)
+    | Infixl Int (NonEmpty Text)
+    | Infixr Int (NonEmpty Text)
+    | Closed (NonEmpty Text)
     deriving (Eq, Ord, Show, Typeable, Data)
 
 -- |The type of a distfix precedence grammar. The following must be true of any parameter to `Aasam.m`.
