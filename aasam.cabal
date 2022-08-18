@@ -1,6 +1,6 @@
 cabal-version:      2.4
 name:               aasam
-version:            0.1.0.0
+version:            0.2.0.0
 license:            Apache-2.0
 license-file:       LICENSE
 maintainer:         mobotsar@protonmail.com
@@ -26,7 +26,7 @@ library
     build-depends:
         base ^>=4.15.1.0,
         containers >=0.6.4 && <0.7,
-        text >= 1.2.5 && < 1.3
+        text >=1.2.5 && <1.3
 
 test-suite aasam-test
     type:             exitcode-stdio-1.0
@@ -40,4 +40,4 @@ test-suite aasam-test
         test-framework-hunit ==0.3.0.2,
         containers >=0.6.4 && <0.7,
         aasam,
-        text >= 1.2.5 && < 1.3
+        text >=1.2.5 && <1.3
