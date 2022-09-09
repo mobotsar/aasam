@@ -118,7 +118,7 @@ fill s cfgprods = Set.union withTerminals withoutTerminals
 
 -- The CE production on `closedrule` must go to a non-terminal.
 -- Relevant terminals in these rules are all added by `fill`. Those added immediately in the rule bodies are just to signal to fill.
---   If an "evil" non-terminal appears anywhere in the output of a *rule fuctions, that's a bug.
+--   If an "evil" non-terminal appears anywhere in the output of a *rule fuction, that's a bug.
 prerule :: Int -> Int -> PqQuad -> Set CfgProduction
 prerule p q (_, _, r, s) = fill s $ Set.singleton (nt (prec r) p q, [Right (nt (prec r - 1) (p + 1) q)])
 
